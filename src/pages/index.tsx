@@ -50,6 +50,9 @@ export default function Home() {
     iterationDays: 10,
     teamSize: 5
   });
+  
+  // Flag to track if iterations have been pre-filled
+  const [iterationsPreFilled, setIterationsPreFilled] = useState<boolean>(false);
 
   // State for chart data
   const [chartData, setChartData] = useState<ChartData[]>([]);
@@ -64,6 +67,12 @@ export default function Home() {
       ...prev,
       [name]: parseFloat(value) || 0
     }));
+    
+    // Reset pre-filled flag to allow regeneration of iterations with new parameters
+    // Only if there are no manually added iterations
+    if (iterations.length === 0) {
+      setIterationsPreFilled(false);
+    }
   };
 
   // Handle new iteration input changes
@@ -124,6 +133,8 @@ export default function Home() {
               teamSize: parseFloat(params.teamSize) || 5,
               workingDaysPerIteration: parseFloat(params.workingDaysPerIteration) || 10
             });
+            // Reset pre-filled flag to allow regeneration of iterations with new parameters
+            setIterationsPreFilled(false);
             toast.success("Budget parameters imported successfully");
           } else if (parsedData.length > 0 && typeof parsedData[0] === 'object' && parsedData[0] !== null && 'iterationNumber' in parsedData[0]) {
             // Iterations file
@@ -147,6 +158,7 @@ export default function Home() {
             }
             
             setIterations(validIterations);
+            setIterationsPreFilled(true); // Mark as pre-filled since we've imported data
             toast.success(`${validIterations.length} iterations imported successfully`);
           } else {
             toast.error("Invalid CSV format. Please check the template.");
@@ -222,6 +234,53 @@ export default function Home() {
     link.click();
     document.body.removeChild(link);
   };
+
+  // Generate iterations up to 100% budget consumption
+  const generateIterationsToFullBudget = () => {
+    const { costPerHour, budgetSize, teamSize, workingDaysPerIteration } = budgetParams;
+    
+    // Calculate cost per iteration with default parameters
+    const costPerIteration = costPerHour * 8 * teamSize * workingDaysPerIteration;
+    
+    // Skip if cost per iteration is zero (invalid parameters)
+    if (costPerIteration <= 0 || budgetSize <= 0) return [];
+    
+    // Calculate how many iterations needed to consume the budget
+    const iterationsNeeded = Math.ceil(budgetSize / costPerIteration);
+    
+    // Limit to 100 iterations maximum
+    const iterationCount = Math.min(iterationsNeeded, 100);
+    
+    // Generate iterations
+    const generatedIterations: IterationData[] = [];
+    for (let i = 1; i <= iterationCount; i++) {
+      generatedIterations.push({
+        iterationNumber: i,
+        iterationDays: workingDaysPerIteration,
+        teamSize: teamSize
+      });
+    }
+    
+    return generatedIterations;
+  };
+  
+  // Pre-fill iterations when budget parameters change
+  useEffect(() => {
+    // Only pre-fill if no iterations exist yet and we haven't pre-filled before
+    if (iterations.length === 0 && !iterationsPreFilled) {
+      const generatedIterations = generateIterationsToFullBudget();
+      if (generatedIterations.length > 0) {
+        setIterations(generatedIterations);
+        setIterationsPreFilled(true);
+        
+        // Update the next iteration number for manual additions
+        setNewIteration(prev => ({
+          ...prev,
+          iterationNumber: generatedIterations.length + 1
+        }));
+      }
+    }
+  }, [budgetParams, iterations.length, iterationsPreFilled]);
 
   // Calculate budget consumption percentage
   const calculateBudgetConsumption = () => {
@@ -337,7 +396,10 @@ export default function Home() {
               <Card>
                 <CardHeader>
                   <CardTitle>Iteration Data</CardTitle>
-                  <CardDescription>Add or import iteration-specific data</CardDescription>
+                  <CardDescription>
+                    Iterations are pre-filled based on initial parameters up to 100% budget consumption.
+                    You can add, regenerate, or import custom iterations.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -376,7 +438,25 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <div className="flex justify-end">
+                  <div className="flex justify-between">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIterations(generateIterationsToFullBudget());
+                        setIterationsPreFilled(true);
+                        
+                        // Update the next iteration number for manual additions
+                        const generatedIterations = generateIterationsToFullBudget();
+                        setNewIteration(prev => ({
+                          ...prev,
+                          iterationNumber: generatedIterations.length + 1
+                        }));
+                        
+                        toast.success("Iterations regenerated based on current parameters");
+                      }}
+                    >
+                      Regenerate Iterations
+                    </Button>
                     <Button onClick={addIteration}>
                       Add Iteration
                     </Button>
