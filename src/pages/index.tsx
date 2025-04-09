@@ -30,6 +30,7 @@ interface IterationData {
 interface ChartData {
   name: string;
   iterationCost: number;
+  iterationCost2: number; // Added for iteration costs
   cumulativeStandard: number;
   cumulativeActual: number;
 }
@@ -193,12 +194,16 @@ export default function Home() {
     
     const data: ChartData[] = sortedIterations.map(iteration => {
       const iterationCost = costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
+      // Calculate the cost for this specific iteration (same as iterationCost)
+      const iterationCost2 = costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
+      
       cumulativeStandard += standardIterationCost;
       cumulativeActual += iterationCost;
       
       return {
         name: `Iteration ${iteration.iterationNumber}`,
         iterationCost,
+        iterationCost2,
         cumulativeStandard,
         cumulativeActual
       };
@@ -585,7 +590,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>Budget Visualization</CardTitle>
                   <CardDescription>
-                    Visualize your budget consumption across iterations. The chart shows cumulative costs (left axis) and individual iteration costs (right axis) in a single view.
+                    Visualize your budget consumption across iterations. The chart shows cumulative costs (left axis) and individual costs (right axis) in a single view. The dashed red line represents the iteration costs, while the solid blue line shows interaction costs.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -625,7 +630,8 @@ export default function Home() {
                       <div className="h-[500px] w-full">
                         <ChartContainer
                           config={{
-                            iterationCost: { label: "Iteration Cost", color: "#4f46e5" },
+                            iterationCost: { label: "Interaction Cost", color: "#4f46e5" },
+                            iterationCost2: { label: "Iteration Cost", color: "#e11d48" },
                             cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
                             cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
                           }}
@@ -667,7 +673,7 @@ export default function Home() {
                               fillOpacity={0.1}
                               strokeWidth={2}
                             />
-                            {/* Line for iteration costs with dots */}
+                            {/* Line for interaction costs with dots */}
                             <Line
                               yAxisId="right"
                               type="monotone"
@@ -676,6 +682,17 @@ export default function Home() {
                               strokeWidth={2}
                               dot={{ r: 4, fill: "#4f46e5" }}
                               activeDot={{ r: 6, fill: "#4f46e5" }}
+                            />
+                            {/* New line for iteration costs with dots */}
+                            <Line
+                              yAxisId="right"
+                              type="monotone"
+                              dataKey="iterationCost2"
+                              stroke="#e11d48"
+                              strokeWidth={2}
+                              dot={{ r: 4, fill: "#e11d48" }}
+                              activeDot={{ r: 6, fill: "#e11d48" }}
+                              strokeDasharray="5 5"
                             />
                             <Legend />
                           </AreaChart>
