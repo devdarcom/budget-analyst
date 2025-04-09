@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Bar, BarChart, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Bar, BarChart, ResponsiveContainer, Line } from "recharts";
 import Papa from "papaparse";
 import { toast } from "sonner";
 
@@ -585,7 +585,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>Budget Visualization</CardTitle>
                   <CardDescription>
-                    Visualize your budget consumption across iterations
+                    Visualize your budget consumption across iterations. The chart shows cumulative costs (left axis) and individual iteration costs (right axis) in a single view.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -622,7 +622,7 @@ export default function Home() {
                         </Card>
                       </div>
                       
-                      <div className="h-[400px] w-full">
+                      <div className="h-[500px] w-full">
                         <ChartContainer
                           config={{
                             iterationCost: { label: "Iteration Cost", color: "#4f46e5" },
@@ -632,13 +632,25 @@ export default function Home() {
                         >
                           <AreaChart
                             data={chartData}
-                            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="name" />
-                            <YAxis />
+                            {/* Left Y-axis for cumulative values */}
+                            <YAxis 
+                              yAxisId="left"
+                              orientation="left"
+                              label={{ value: "Cumulative Cost ($)", angle: -90, position: 'insideLeft' }}
+                            />
+                            {/* Right Y-axis for iteration costs */}
+                            <YAxis 
+                              yAxisId="right" 
+                              orientation="right"
+                              label={{ value: "Iteration Cost ($)", angle: 90, position: 'insideRight' }}
+                            />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="cumulativeStandard"
                               stroke="#10b981"
@@ -647,6 +659,7 @@ export default function Home() {
                               strokeWidth={2}
                             />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="cumulativeActual"
                               stroke="#f59e0b"
@@ -654,28 +667,18 @@ export default function Home() {
                               fillOpacity={0.1}
                               strokeWidth={2}
                             />
+                            {/* Line for iteration costs with dots */}
+                            <Line
+                              yAxisId="right"
+                              type="monotone"
+                              dataKey="iterationCost"
+                              stroke="#4f46e5"
+                              strokeWidth={2}
+                              dot={{ r: 4, fill: "#4f46e5" }}
+                              activeDot={{ r: 6, fill: "#4f46e5" }}
+                            />
                             <Legend />
                           </AreaChart>
-                        </ChartContainer>
-                      </div>
-                      
-                      <div className="h-[300px] w-full">
-                        <ChartContainer
-                          config={{
-                            iterationCost: { label: "Iteration Cost", color: "#4f46e5" },
-                          }}
-                        >
-                          <BarChart
-                            data={chartData}
-                            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Bar dataKey="iterationCost" fill="#4f46e5" />
-                            <Legend />
-                          </BarChart>
                         </ChartContainer>
                       </div>
                     </>
