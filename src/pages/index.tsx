@@ -398,7 +398,7 @@ export default function Home() {
                   <CardTitle>Iteration Data</CardTitle>
                   <CardDescription>
                     Iterations are pre-filled based on initial parameters up to 100% budget consumption.
-                    You can add, regenerate, or import custom iterations.
+                    You can add, regenerate, or import custom iterations. The table below is editable - click on any Days or Team Size value to modify it.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -476,13 +476,65 @@ export default function Home() {
                         <TableBody>
                           {[...iterations]
                             .sort((a, b) => a.iterationNumber - b.iterationNumber)
-                            .map((iteration) => {
+                            .map((iteration, index) => {
                               const cost = budgetParams.costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
                               return (
                                 <TableRow key={iteration.iterationNumber}>
                                   <TableCell>{iteration.iterationNumber}</TableCell>
-                                  <TableCell>{iteration.iterationDays}</TableCell>
-                                  <TableCell>{iteration.teamSize}</TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      value={iteration.iterationDays}
+                                      onChange={(e) => {
+                                        const value = parseFloat(e.target.value) || 0;
+                                        if (value <= 0) {
+                                          toast.error("Days must be greater than zero");
+                                          return;
+                                        }
+                                        const updatedIterations = [...iterations];
+                                        const sortedIndex = updatedIterations
+                                          .sort((a, b) => a.iterationNumber - b.iterationNumber)
+                                          .findIndex(it => it.iterationNumber === iteration.iterationNumber);
+                                        if (sortedIndex !== -1) {
+                                          updatedIterations[sortedIndex] = {
+                                            ...updatedIterations[sortedIndex],
+                                            iterationDays: value
+                                          };
+                                          setIterations(updatedIterations);
+                                          toast.success(`Updated days for iteration ${iteration.iterationNumber}`);
+                                        }
+                                      }}
+                                      className="h-8 w-20 transition-colors hover:border-primary focus:border-primary"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      value={iteration.teamSize}
+                                      onChange={(e) => {
+                                        const value = parseFloat(e.target.value) || 0;
+                                        if (value <= 0) {
+                                          toast.error("Team size must be greater than zero");
+                                          return;
+                                        }
+                                        const updatedIterations = [...iterations];
+                                        const sortedIndex = updatedIterations
+                                          .sort((a, b) => a.iterationNumber - b.iterationNumber)
+                                          .findIndex(it => it.iterationNumber === iteration.iterationNumber);
+                                        if (sortedIndex !== -1) {
+                                          updatedIterations[sortedIndex] = {
+                                            ...updatedIterations[sortedIndex],
+                                            teamSize: value
+                                          };
+                                          setIterations(updatedIterations);
+                                          toast.success(`Updated team size for iteration ${iteration.iterationNumber}`);
+                                        }
+                                      }}
+                                      className="h-8 w-20 transition-colors hover:border-primary focus:border-primary"
+                                    />
+                                  </TableCell>
                                   <TableCell className="text-right">{cost.toLocaleString()}</TableCell>
                                 </TableRow>
                               );
