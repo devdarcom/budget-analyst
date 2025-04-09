@@ -115,7 +115,7 @@ export default function Home() {
           const parsedData = results.data;
           
           // Check if this is a parameters file or iterations file
-          if (parsedData.length > 0 && 'costPerHour' in parsedData[0]) {
+          if (parsedData.length > 0 && typeof parsedData[0] === 'object' && parsedData[0] !== null && 'costPerHour' in parsedData[0]) {
             // Parameters file
             const params = parsedData[0] as any;
             setBudgetParams({
@@ -125,7 +125,7 @@ export default function Home() {
               workingDaysPerIteration: parseFloat(params.workingDaysPerIteration) || 10
             });
             toast.success("Budget parameters imported successfully");
-          } else if (parsedData.length > 0 && 'iterationNumber' in parsedData[0]) {
+          } else if (parsedData.length > 0 && typeof parsedData[0] === 'object' && parsedData[0] !== null && 'iterationNumber' in parsedData[0]) {
             // Iterations file
             if (parsedData.length > 100) {
               toast.error("CSV contains more than 100 iterations. Only the first 100 will be imported.");
