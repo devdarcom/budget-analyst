@@ -191,19 +191,30 @@ export default function Home() {
     let cumulativeStandard = 0;
     let cumulativeActual = 0;
     
-    const data: ChartData[] = sortedIterations.map(iteration => {
+    // Start with an initial data point at 0
+    const data: ChartData[] = [
+      {
+        name: "Start",
+        iterationCost: 0,
+        cumulativeStandard: 0,
+        cumulativeActual: 0
+      }
+    ];
+    
+    // Add data points for each iteration
+    sortedIterations.forEach(iteration => {
       // Calculate the cost for this iteration
       const iterationCost = costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
       
       cumulativeStandard += standardIterationCost;
       cumulativeActual += iterationCost;
       
-      return {
+      data.push({
         name: `Iteration ${iteration.iterationNumber}`,
         iterationCost,
         cumulativeStandard,
         cumulativeActual
-      };
+      });
     });
     
     setChartData(data);
@@ -607,7 +618,7 @@ export default function Home() {
                             <div className="text-center">
                               <p className="text-sm font-medium text-muted-foreground">Consumed Budget</p>
                               <h3 className="text-2xl font-bold">
-                                ${chartData[chartData.length - 1].cumulativeActual.toLocaleString()}
+                                ${(chartData.length > 0 ? chartData[chartData.length - 1].cumulativeActual : 0).toLocaleString()}
                               </h3>
                             </div>
                           </CardContent>
