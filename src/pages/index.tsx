@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Bar, BarChart, ResponsiveContainer, Line } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Bar, BarChart, ResponsiveContainer, Line, ComposedChart } from "recharts";
 import Papa from "papaparse";
 import { toast } from "sonner";
 
@@ -587,7 +587,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>Budget Visualization</CardTitle>
                   <CardDescription>
-                    Visualize your budget consumption across iterations. The chart shows cumulative costs and individual iteration costs in a single view.
+                    Visualize your budget consumption across iterations. The chart shows cumulative costs on the right Y-axis and individual iteration costs (as bars and a line) on the left Y-axis.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -628,23 +628,32 @@ export default function Home() {
                         <ChartContainer
                           config={{
                             individualCost: { label: "Individual Cost", color: "#4f46e5" },
+                            iterationCostLine: { label: "Iteration Cost Line", color: "#3b82f6" },
                             cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
                             cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
                           }}
                         >
-                          <AreaChart
+                          <ComposedChart
                             data={chartData}
                             margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="name" />
-                            {/* Y-axis for all values */}
+                            {/* Primary Y-axis for cumulative costs */}
                             <YAxis 
+                              yAxisId="right"
+                              orientation="right"
+                              label={{ value: "Cumulative Cost ($)", angle: -90, position: 'insideRight' }}
+                            />
+                            {/* Secondary Y-axis for individual iteration costs */}
+                            <YAxis 
+                              yAxisId="left"
                               orientation="left"
-                              label={{ value: "Cost ($)", angle: -90, position: 'insideLeft' }}
+                              label={{ value: "Iteration Cost ($)", angle: -90, position: 'insideLeft' }}
                             />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Area
+                              yAxisId="right"
                               type="monotone"
                               dataKey="cumulativeStandard"
                               stroke="#10b981"
@@ -654,6 +663,7 @@ export default function Home() {
                               name="Standard Cumulative"
                             />
                             <Area
+                              yAxisId="right"
                               type="monotone"
                               dataKey="cumulativeActual"
                               stroke="#f59e0b"
@@ -664,14 +674,25 @@ export default function Home() {
                             />
                             {/* Blue bars for individual iteration costs */}
                             <Bar
+                              yAxisId="left"
                               dataKey="iterationCost"
                               fill="#4f46e5"
                               fillOpacity={0.6}
                               name="Individual Cost"
                               barSize={20}
                             />
+                            {/* Blue line for iteration costs */}
+                            <Line
+                              yAxisId="left"
+                              type="monotone"
+                              dataKey="iterationCost"
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                              dot={{ r: 4 }}
+                              name="Iteration Cost Line"
+                            />
                             <Legend />
-                          </AreaChart>
+                          </ComposedChart>
                         </ChartContainer>
                       </div>
                     </>
