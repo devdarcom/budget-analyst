@@ -75,8 +75,8 @@ export default function Home() {
       };
       
       // Auto-calculate total hours when days or team size changes
-      // Only if totalHours hasn't been manually set
-      if ((name === 'iterationDays' || name === 'teamSize') && name !== 'totalHours') {
+      // Only if we're not directly editing the totalHours field
+      if (name !== 'totalHours' && (name === 'iterationDays' || name === 'teamSize')) {
         updated.totalHours = updated.iterationDays * updated.teamSize * 8;
       }
       
