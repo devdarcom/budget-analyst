@@ -161,7 +161,8 @@ export default function Home() {
                 iterationNumber: parseFloat(item.iterationNumber) || 0,
                 iterationDays: parseFloat(item.iterationDays) || 0,
                 teamSize: parseFloat(item.teamSize) || 0,
-                totalHours: parseFloat(item.totalHours) || 0
+                totalHours: parseFloat(item.totalHours) || 0,
+                isCurrent: item.isCurrent === "true"
               };
               
               // If totalHours is not provided or is zero, calculate it
@@ -213,6 +214,12 @@ export default function Home() {
     // Sort iterations by iteration number
     const sortedIterations = [...iterations].sort((a, b) => a.iterationNumber - b.iterationNumber);
     
+    // Find the current iteration (if any)
+    const currentIteration = sortedIterations.find(it => it.isCurrent);
+    const currentIterationIndex = currentIteration 
+      ? sortedIterations.findIndex(it => it.iterationNumber === currentIteration.iterationNumber)
+      : sortedIterations.length - 1; // If no current iteration, use the last one
+    
     let cumulativeStandard = 0;
     let cumulativeActual = 0;
     
@@ -227,19 +234,30 @@ export default function Home() {
     ];
     
     // Add data points for each iteration
-    sortedIterations.forEach(iteration => {
+    sortedIterations.forEach((iteration, index) => {
       // Get total hours (use calculated value if not set)
       const totalHours = iteration.totalHours || (iteration.iterationDays * iteration.teamSize * 8);
       
       // Calculate the cost for this iteration using total hours
       const iterationCost = costPerHour * totalHours;
       
+      // Always calculate standard cumulative
       cumulativeStandard += standardIterationCost;
-      cumulativeActual += iterationCost;
+      
+      // For actual cumulative, use actual data up to current iteration
+      // After current iteration, follow standard data pattern
+      if (index <= currentIterationIndex) {
+        // Up to current iteration, use actual data
+        cumulativeActual += iterationCost;
+      } else {
+        // After current iteration, follow standard data pattern
+        cumulativeActual += standardIterationCost;
+      }
       
       data.push({
         name: `Iteration ${iteration.iterationNumber}`,
-        iterationCost,
+        // Only show iteration cost up to current iteration
+        iterationCost: index <= currentIterationIndex ? iterationCost : 0,
         cumulativeStandard,
         cumulativeActual
       });
@@ -256,11 +274,11 @@ export default function Home() {
   };
 
   const generateIterationsTemplate = () => {
-    const headers = "iterationNumber,iterationDays,teamSize,totalHours\n";
+    const headers = "iterationNumber,iterationDays,teamSize,totalHours,isCurrent\n";
     const values = iterations.map(it => 
-      `${it.iterationNumber},${it.iterationDays},${it.teamSize},${it.totalHours || it.iterationDays * it.teamSize * 8}`
+      `${it.iterationNumber},${it.iterationDays},${it.teamSize},${it.totalHours || it.iterationDays * it.teamSize * 8},${it.isCurrent ? "true" : "false"}`
     ).join("\n");
-    return headers + (values || "1,10,5,400");
+    return headers + (values || "1,10,5,400,false");
   };
 
   const downloadTemplate = (type: "parameters" | "iterations") => {
@@ -304,7 +322,8 @@ export default function Home() {
         iterationNumber: i,
         iterationDays: workingDaysPerIteration,
         teamSize: teamSize,
-        totalHours: hoursPerIteration
+        totalHours: hoursPerIteration,
+        isCurrent: i === iterationCount // Mark the last iteration as current by default
       });
     }
     
@@ -582,6 +601,7 @@ export default function Home() {
                             <TableHead>Team Size</TableHead>
                             <TableHead>Total Hours</TableHead>
                             <TableHead className="text-right">Est. Cost ($)</TableHead>
+                            <TableHead className="text-center">Current</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -693,6 +713,21 @@ export default function Home() {
                                     />
                                   </TableCell>
                                   <TableCell className="text-right">{cost.toLocaleString()}</TableCell>
+                                  <TableCell className="text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={iteration.isCurrent || false}
+                                      onChange={() => {
+                                        const updatedIterations = [...iterations].map(it => ({
+                                          ...it,
+                                          isCurrent: it.iterationNumber === iteration.iterationNumber
+                                        }));
+                                        setIterations(updatedIterations);
+                                        toast.success(`Iteration ${iteration.iterationNumber} marked as current`);
+                                      }}
+                                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                  </TableCell>
                                 </TableRow>
                               );
                             })}

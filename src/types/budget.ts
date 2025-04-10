@@ -10,6 +10,7 @@ export interface IterationData {
   iterationDays: number;
   teamSize: number;
   totalHours?: number; // Optional to maintain backward compatibility
+  isCurrent?: boolean; // Flag to mark an iteration as the current one
 }
 
 export interface ChartData {
