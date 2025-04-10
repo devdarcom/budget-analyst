@@ -42,6 +42,12 @@ export async function generatePDFReport(
   
   // Add chart visualization
   if (chartRef.current) {
+    // Check if we need a new page for the chart
+    if (yPosition > pageHeight / 3) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    
     pdf.setFontSize(16);
     pdf.text('Budget Visualization Chart', margin, yPosition);
     yPosition += 10;
@@ -52,13 +58,24 @@ export async function generatePDFReport(
         scale: 2, // Higher scale for better quality
         logging: false,
         useCORS: true,
+        height: chartRef.current.scrollHeight, // Ensure full height is captured
+        width: chartRef.current.scrollWidth, // Ensure full width is captured
       });
       
       const imgData = canvas.toDataURL('image/png');
       const imgWidth = pageWidth - (margin * 2);
+      
+      // Calculate height while maintaining aspect ratio
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      // Add the chart image to the PDF
+      // Check if the image will fit on the current page
+      if (yPosition + imgHeight > pageHeight - margin) {
+        // Add a new page if the chart is too large for remaining space
+        pdf.addPage();
+        yPosition = margin;
+      }
+      
+      // Add the chart image to the PDF with proper scaling
       pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
       yPosition += imgHeight + 15;
     } catch (error) {
