@@ -2,6 +2,16 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { BudgetParams, IterationData, ChartData } from '@/types/budget';
 
+// Helper function to format numbers with K suffix
+const formatNumberWithSuffix = (value: number): string => {
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  } else if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  }
+  return value.toString();
+};
+
 export async function generatePDFReport(
   budgetParams: BudgetParams,
   iterations: IterationData[],
@@ -51,6 +61,67 @@ export async function generatePDFReport(
     pdf.setFontSize(16);
     pdf.text('Budget Visualization Chart', margin, yPosition);
     yPosition += 10;
+    
+    // Calculate budget metrics for badges
+    const sortedIterations = [...iterations].sort((a, b) => a.iterationNumber - b.iterationNumber);
+    const currentIteration = sortedIterations.find(it => it.isCurrent);
+    
+    // Calculate budget consumption metrics
+    let cumulativeCost = 0;
+    let currentIterationCost = 0;
+    let currentIterationNumber = 0;
+    
+    sortedIterations.forEach((iteration, index) => {
+      const totalHours = iteration.totalHours || (iteration.iterationDays * iteration.teamSize * 8);
+      const iterationCost = budgetParams.costPerHour * totalHours;
+      
+      if (iteration.isCurrent) {
+        currentIterationCost = iterationCost;
+        currentIterationNumber = iteration.iterationNumber;
+      }
+      
+      if (!currentIteration || index <= sortedIterations.indexOf(currentIteration)) {
+        cumulativeCost += iterationCost;
+      }
+    });
+    
+    const budgetConsumptionPercentage = (cumulativeCost / budgetParams.budgetSize) * 100;
+    const remainingBudget = budgetParams.budgetSize - cumulativeCost;
+    
+    // Add badges with stats above the chart
+    const badgeWidth = (pageWidth - (margin * 2)) / 3;
+    const badgeHeight = 15;
+    
+    // Badge 1: Total Budget
+    pdf.setFillColor(40, 40, 40);
+    pdf.roundedRect(margin, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(8);
+    pdf.text('TOTAL BUDGET', margin + (badgeWidth - 2) / 2, yPosition + 4, { align: 'center' });
+    pdf.setFontSize(10);
+    pdf.text(`${budgetParams.currency}${formatNumberWithSuffix(budgetParams.budgetSize)}`, margin + (badgeWidth - 2) / 2, yPosition + 11, { align: 'center' });
+    
+    // Badge 2: Consumed Budget
+    pdf.setFillColor(40, 40, 40);
+    pdf.roundedRect(margin + badgeWidth, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(8);
+    pdf.text('CONSUMED BUDGET', margin + badgeWidth + (badgeWidth - 2) / 2, yPosition + 4, { align: 'center' });
+    pdf.setFontSize(10);
+    pdf.text(`${budgetParams.currency}${formatNumberWithSuffix(cumulativeCost)} (${budgetConsumptionPercentage.toFixed(1)}%)`, margin + badgeWidth + (badgeWidth - 2) / 2, yPosition + 11, { align: 'center' });
+    
+    // Badge 3: Remaining Budget
+    pdf.setFillColor(40, 40, 40);
+    pdf.roundedRect(margin + badgeWidth * 2, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(8);
+    pdf.text('REMAINING BUDGET', margin + badgeWidth * 2 + (badgeWidth - 2) / 2, yPosition + 4, { align: 'center' });
+    pdf.setFontSize(10);
+    pdf.text(`${budgetParams.currency}${formatNumberWithSuffix(remainingBudget)}`, margin + badgeWidth * 2 + (badgeWidth - 2) / 2, yPosition + 11, { align: 'center' });
+    
+    // Reset text color
+    pdf.setTextColor(0, 0, 0);
+    yPosition += badgeHeight + 5;
     
     try {
       // Capture the chart as an image
@@ -167,8 +238,13 @@ export async function generatePDFReport(
         yPosition += 8;
       }
       
+      // Highlight row if it's the current iteration
+      if (data.isCurrent) {
+        pdf.setFillColor(200, 220, 255); // Blue opacity color
+        pdf.rect(startX, yPosition, tableWidth, 8, 'F');
+      }
       // Highlight row if budget is fully consumed at this iteration
-      if (index === budgetFullyConsumedIndex || 
+      else if (index === budgetFullyConsumedIndex || 
           (budgetFullyConsumedIndex === -1 && data.budgetConsumed >= 100)) {
         pdf.setFillColor(255, 240, 240);
         pdf.rect(startX, yPosition, tableWidth, 8, 'F');
@@ -200,11 +276,23 @@ export async function generatePDFReport(
       yPosition += 8;
     });
     
-    // Add note about highlighted row
+    // Add notes about highlighted rows
     yPosition += 5;
     pdf.setFontSize(9);
     pdf.setTextColor(100, 100, 100);
-    pdf.text('Note: Highlighted row indicates the iteration where budget is fully consumed.', margin, yPosition);
+    pdf.text('Note: Highlighted rows indicate:', margin, yPosition);
+    yPosition += 5;
+    
+    // Blue highlight note
+    pdf.setFillColor(200, 220, 255);
+    pdf.rect(margin, yPosition - 3, 5, 5, 'F');
+    pdf.text('Current iteration', margin + 8, yPosition);
+    yPosition += 5;
+    
+    // Red highlight note
+    pdf.setFillColor(255, 240, 240);
+    pdf.rect(margin, yPosition - 3, 5, 5, 'F');
+    pdf.text('Iteration where budget is fully consumed', margin + 8, yPosition);
   }
   
   // Save the PDF

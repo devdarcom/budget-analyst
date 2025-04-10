@@ -1102,6 +1102,14 @@ export default function Home() {
                                 orientation="right"
                                 domain={[0, 'auto']}
                                 label={{ value: `Cumulative Cost (${budgetParams.currency})`, angle: -90, position: 'insideRight' }}
+                                tickFormatter={(value) => {
+                                  if (value >= 1000000) {
+                                    return `${(value / 1000000).toFixed(1)}M`;
+                                  } else if (value >= 1000) {
+                                    return `${(value / 1000).toFixed(1)}K`;
+                                  }
+                                  return value;
+                                }}
                               />
                               {/* Secondary Y-axis for individual iteration costs */}
                               <YAxis 
@@ -1109,6 +1117,14 @@ export default function Home() {
                                 orientation="left"
                                 domain={[0, 250000]}
                                 label={{ value: `Iteration Cost (${budgetParams.currency})`, angle: -90, position: 'insideLeft' }}
+                                tickFormatter={(value) => {
+                                  if (value >= 1000000) {
+                                    return `${(value / 1000000).toFixed(1)}M`;
+                                  } else if (value >= 1000) {
+                                    return `${(value / 1000).toFixed(1)}K`;
+                                  }
+                                  return value;
+                                }}
                               />
                               <ChartTooltip content={<ChartTooltipContent />} />
                               {/* Red dotted horizontal line at total budget level */}
