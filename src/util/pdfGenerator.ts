@@ -26,9 +26,8 @@ export async function generatePDFReport(
   let yPosition = margin;
   
   // Add logo
-  // Using a PNG version of the logo for better compatibility with jsPDF
-  // We're using the same URL but jsPDF will handle it better as a PNG
-  const logoUrl = 'https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/fully-transparent-logo-0e7b719.svg';
+  // Using the new logo for the PDF report
+  const logoUrl = 'https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/black-transparent-logo-3d63201.svg';
   
   // Function to load an image and convert to base64
   const loadImage = (url: string): Promise<HTMLImageElement> => {
@@ -49,8 +48,8 @@ export async function generatePDFReport(
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // Set canvas dimensions
-    const logoWidth = 30; // in mm
+    // Set canvas dimensions - reduced width to ensure it fits better
+    const logoWidth = 25; // in mm (reduced from 30mm)
     const logoWidthPx = logoWidth * 3.779528; // Convert mm to px (approximate)
     const logoHeightPx = (img.height / img.width) * logoWidthPx;
     
@@ -71,7 +70,8 @@ export async function generatePDFReport(
       pdf.addImage(imgData, 'PNG', logoX, yPosition, logoWidth, logoWidth * (logoHeightPx / logoWidthPx));
       
       // Update yPosition to account for logo height plus some spacing
-      yPosition += (logoWidth * (logoHeightPx / logoWidthPx)) + 10;
+      // Increased spacing to ensure no text overlay
+      yPosition += (logoWidth * (logoHeightPx / logoWidthPx)) + 15;
     }
   } catch (error) {
     console.error('Error loading logo:', error);
