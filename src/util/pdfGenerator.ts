@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { BudgetParams, IterationData, ChartData } from '@/types/budget';
+import { logoBase64 } from './logoBase64';
 
 // Helper function to format numbers with K suffix
 const formatNumberWithSuffix = (value: number): string => {
@@ -25,54 +26,23 @@ export async function generatePDFReport(
   const margin = 10;
   let yPosition = margin;
   
-  // Add logo
-  // Using the new logo for the PDF report
-  const logoUrl = 'https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/black-transparent-logo-3d63201.svg';
-  
-  // Function to load an image and convert to base64
-  const loadImage = (url: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = (e) => reject(e);
-      img.src = url;
-    });
-  };
-  
+  // Add logo using base64 encoded data
   try {
-    // Load the image
-    const img = await loadImage(logoUrl);
+    console.log('Adding logo using base64 data');
     
-    // Create a canvas to draw the image (this helps with SVG conversion)
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    // Define logo dimensions
+    const logoWidth = 60; // in mm
+    const logoHeight = 20; // in mm
     
-    // Set canvas dimensions - reduced width to ensure it fits better
-    const logoWidth = 25; // in mm (reduced from 30mm)
-    const logoWidthPx = logoWidth * 3.779528; // Convert mm to px (approximate)
-    const logoHeightPx = (img.height / img.width) * logoWidthPx;
+    // Center the logo horizontally
+    const logoX = (pageWidth - logoWidth) / 2;
     
-    canvas.width = logoWidthPx;
-    canvas.height = logoHeightPx;
+    // Add the logo to the PDF using base64 data
+    pdf.addImage(logoBase64, 'SVG', logoX, yPosition, logoWidth, logoHeight);
+    console.log('Logo added to PDF');
     
-    // Draw image on canvas
-    if (ctx) {
-      ctx.drawImage(img, 0, 0, logoWidthPx, logoHeightPx);
-      
-      // Get data URL from canvas
-      const imgData = canvas.toDataURL('image/png');
-      
-      // Center the logo horizontally
-      const logoX = (pageWidth - logoWidth) / 2;
-      
-      // Add the logo to the PDF
-      pdf.addImage(imgData, 'PNG', logoX, yPosition, logoWidth, logoWidth * (logoHeightPx / logoWidthPx));
-      
-      // Update yPosition to account for logo height plus some spacing
-      // Increased spacing to ensure no text overlay
-      yPosition += (logoWidth * (logoHeightPx / logoWidthPx)) + 15;
-    }
+    // Update yPosition to account for logo height plus some spacing
+    yPosition += logoHeight + 10;
   } catch (error) {
     console.error('Error loading logo:', error);
     // If logo fails to load, just continue without it
