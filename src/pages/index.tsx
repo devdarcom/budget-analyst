@@ -649,6 +649,7 @@ export default function Home() {
                             <YAxis 
                               yAxisId="left"
                               orientation="left"
+                              domain={[0, 250000]}
                               label={{ value: "Iteration Cost ($)", angle: -90, position: 'insideLeft' }}
                             />
                             <ChartTooltip content={<ChartTooltipContent />} />
