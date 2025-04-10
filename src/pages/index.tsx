@@ -53,10 +53,19 @@ export default function Home() {
   // Handle budget parameter changes
   const handleParamChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setBudgetParams(prev => ({
-      ...prev,
-      [name]: parseFloat(value) || 0
-    }));
+    
+    // Handle currency as a string, all other parameters as numbers
+    if (name === 'currency') {
+      setBudgetParams(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    } else {
+      setBudgetParams(prev => ({
+        ...prev,
+        [name]: parseFloat(value) || 0
+      }));
+    }
     
     // Reset pre-filled flag to allow regeneration of iterations with new parameters
     // Only if there are no manually added iterations
