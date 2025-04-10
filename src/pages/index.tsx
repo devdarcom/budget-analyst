@@ -12,29 +12,14 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Bar, BarChart, ResponsiveContainer, Line, ComposedChart } from "recharts";
 import Papa from "papaparse";
 import { toast } from "sonner";
+import { generatePDFReport } from "@/util/pdfGenerator";
+import { BudgetParams, IterationData, ChartData } from "@/types/budget";
 
-// Types
-interface BudgetParams {
-  costPerHour: number;
-  budgetSize: number;
-  teamSize: number;
-  workingDaysPerIteration: number;
-}
-
-interface IterationData {
-  iterationNumber: number;
-  iterationDays: number;
-  teamSize: number;
-}
-
-interface ChartData {
-  name: string;
-  iterationCost: number; // Iteration costs
-  cumulativeStandard: number;
-  cumulativeActual: number;
-}
+// Component implementation
 
 export default function Home() {
+  // Reference for the chart component (used for PDF generation)
+  const chartRef = useRef<HTMLDivElement>(null);
   // State for budget parameters
   const [budgetParams, setBudgetParams] = useState<BudgetParams>({
     costPerHour: 50,
@@ -303,6 +288,24 @@ export default function Home() {
   };
 
   const budgetConsumptionPercentage = calculateBudgetConsumption();
+
+  // Handle PDF report generation
+  const handleGeneratePDF = async () => {
+    if (chartData.length <= 1) {
+      toast.error("No data to generate report. Please add iterations first.");
+      return;
+    }
+    
+    toast.info("Generating PDF report...");
+    
+    try {
+      await generatePDFReport(budgetParams, iterations, chartData, chartRef);
+      toast.success("PDF report generated successfully");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF report");
+    }
+  };
 
   return (
     <>
@@ -635,7 +638,7 @@ export default function Home() {
                         </Card>
                       </div>
                       
-                      <div className="h-[500px] w-full">
+                      <div className="h-[500px] w-full" ref={chartRef}>
                         <ChartContainer
                           config={{
                             individualCost: { label: "Individual Cost", color: "#4f46e5" },
@@ -707,6 +710,15 @@ export default function Home() {
                             <Legend />
                           </ComposedChart>
                         </ChartContainer>
+                      </div>
+                      
+                      <div className="flex justify-center mt-6">
+                        <Button 
+                          onClick={handleGeneratePDF}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          Generate PDF Report
+                        </Button>
                       </div>
                     </>
                   ) : (
