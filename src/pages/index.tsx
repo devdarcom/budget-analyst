@@ -66,27 +66,6 @@ export default function Home() {
           ...prev,
           [name]: parseFloat(value) || 0
         };
-        
-        // After updating budget parameters, check if we need to adjust iterations
-        // to ensure they reach 100% of the budget, but only if we already have iterations
-        setTimeout(() => {
-          if (iterations.length > 0) {
-            const updatedIterations = ensureActualCumulativeCrossesTotalBudget();
-            if (updatedIterations.length > iterations.length) {
-              setIterations(updatedIterations);
-              
-              // Update the next iteration number for manual additions
-              const maxIterationNumber = Math.max(...updatedIterations.map(it => it.iterationNumber));
-              setNewIteration(prev => ({
-                ...prev,
-                iterationNumber: maxIterationNumber + 1
-              }));
-              
-              toast.success(`Added ${updatedIterations.length - iterations.length} iterations to reach total budget`);
-            }
-          }
-        }, 0);
-        
         return updatedParams;
       });
     }
@@ -365,7 +344,7 @@ export default function Home() {
     return generatedIterations;
   };
   
-  // Check if actual cumulative crosses total budget and add iterations if needed
+  // Check if actual cumulative crosses total budget and adjust iterations as needed
   const ensureActualCumulativeCrossesTotalBudget = () => {
     if (iterations.length === 0) return iterations;
     
@@ -395,6 +374,17 @@ export default function Home() {
     
     // Calculate standard cost per iteration for projections
     const standardIterationCost = costPerHour * hoursPerIteration;
+    
+    // Calculate how many iterations are needed to reach the budget
+    const iterationsNeededFromStart = Math.ceil(budgetSize / standardIterationCost);
+    
+    // If we already have more iterations than needed, we need to regenerate
+    // This happens when budget parameters change significantly
+    if (budgetSize < cumulativeActual || Math.abs(iterationsNeededFromStart - sortedIterations.length) > 3) {
+      // Generate completely new iterations based on current parameters
+      const generatedIterations = generateIterationsToFullBudget();
+      return generatedIterations;
+    }
     
     // Calculate projected cumulative cost with existing iterations
     let projectedCumulative = cumulativeActual;
@@ -458,6 +448,37 @@ export default function Home() {
       }
     }
   }, [budgetParams, iterations.length, iterationsPreFilled]);
+  
+  // Automatically adjust iterations when budget parameters change
+  useEffect(() => {
+    // Only adjust if we already have iterations
+    if (iterations.length > 0) {
+      // Use a timeout to ensure this runs after the state has been updated
+      const timeoutId = setTimeout(() => {
+        const updatedIterations = ensureActualCumulativeCrossesTotalBudget();
+        
+        // Check if we need to add or regenerate iterations
+        if (updatedIterations.length !== iterations.length) {
+          setIterations(updatedIterations);
+          
+          // Update the next iteration number for manual additions
+          const maxIterationNumber = Math.max(...updatedIterations.map(it => it.iterationNumber));
+          setNewIteration(prev => ({
+            ...prev,
+            iterationNumber: maxIterationNumber + 1
+          }));
+          
+          if (updatedIterations.length > iterations.length) {
+            toast.success(`Added ${updatedIterations.length - iterations.length} iterations to reach total budget`);
+          } else if (updatedIterations.length < iterations.length) {
+            toast.info(`Adjusted iterations to match new budget parameters`);
+          }
+        }
+      }, 0);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [budgetParams]);
 
   // Calculate budget consumption percentage and consumed budget based on current iteration
   const calculateBudgetMetrics = () => {
