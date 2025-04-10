@@ -601,7 +601,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>Budget Visualization</CardTitle>
                   <CardDescription>
-                    Visualize your budget consumption across iterations. The chart shows cumulative costs on the right Y-axis and individual iteration costs (as bars and a line) on the left Y-axis.
+                    Visualize your budget consumption across iterations. The chart shows cumulative costs on the right Y-axis and individual iteration costs (as bars) on the left Y-axis.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -642,7 +642,6 @@ export default function Home() {
                         <ChartContainer
                           config={{
                             individualCost: { label: "Individual Cost", color: "#4f46e5" },
-                            iterationCostLine: { label: "Iteration Cost Line", color: "#3b82f6" },
                             cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
                             cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
                           }}
@@ -696,16 +695,6 @@ export default function Home() {
                               fillOpacity={0.6}
                               name="Individual Cost"
                               barSize={20}
-                            />
-                            {/* Blue line for iteration costs */}
-                            <Line
-                              yAxisId="left"
-                              type="monotone"
-                              dataKey="iterationCost"
-                              stroke="#3b82f6"
-                              strokeWidth={2}
-                              dot={{ r: 4 }}
-                              name="Iteration Cost Line"
                             />
                             <Legend />
                           </ComposedChart>
