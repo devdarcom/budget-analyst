@@ -17,6 +17,7 @@ import { generatePDFReport } from "@/util/pdfGenerator";
 import { BudgetParams, IterationData, ChartData } from "@/types/budget";
 import SaveStateManager from "@/components/SaveStateManager";
 import { AppState } from "@/util/stateManager";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // Component implementation
 
@@ -46,6 +47,13 @@ export default function Home() {
 
   // State for chart data
   const [chartData, setChartData] = useState<ChartData[]>([]);
+
+  // State for chart visibility toggles
+  const [visibleChartItems, setVisibleChartItems] = useState<string[]>([
+    "standardCumulative", 
+    "actualCumulative", 
+    "individualCost"
+  ]);
 
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -413,10 +421,7 @@ export default function Home() {
     // Add new iterations
     const newIterations = [...sortedIterations];
     
-    // First, remove current flag from all iterations
-    newIterations.forEach(it => it.isCurrent = false);
-    
-    // Add additional iterations
+    // Add additional iterations while preserving current iteration state
     for (let i = 1; i <= iterationsToAdd; i++) {
       const newIterationNumber = maxIterationNumber + i;
       newIterations.push({
@@ -424,7 +429,7 @@ export default function Home() {
         iterationDays: workingDaysPerIteration,
         teamSize: teamSize,
         totalHours: hoursPerIteration,
-        isCurrent: i === iterationsToAdd // Mark the last new iteration as current
+        isCurrent: false // Don't mark new iterations as current
       });
     }
     
@@ -459,7 +464,19 @@ export default function Home() {
         
         // Check if we need to add or regenerate iterations
         if (updatedIterations.length !== iterations.length) {
-          setIterations(updatedIterations);
+          // Preserve the current iteration state
+          const currentIteration = iterations.find(it => it.isCurrent);
+          
+          if (currentIteration) {
+            // Find and mark the same iteration as current in the updated list
+            const updatedWithCurrentPreserved = updatedIterations.map(it => ({
+              ...it,
+              isCurrent: it.iterationNumber === currentIteration.iterationNumber
+            }));
+            setIterations(updatedWithCurrentPreserved);
+          } else {
+            setIterations(updatedIterations);
+          }
           
           // Update the next iteration number for manual additions
           const maxIterationNumber = Math.max(...updatedIterations.map(it => it.iterationNumber));
@@ -540,7 +557,8 @@ export default function Home() {
     return {
       budgetParams,
       iterations,
-      chartData
+      chartData,
+      visibleChartItems
     };
   };
 
@@ -556,6 +574,11 @@ export default function Home() {
     setIterations(state.iterations);
     setChartData(state.chartData);
     setIterationsPreFilled(true);
+    
+    // Load visible chart items if available
+    if (state.visibleChartItems) {
+      setVisibleChartItems(state.visibleChartItems);
+    }
     
     // Update the next iteration number for manual additions
     if (state.iterations.length > 0) {
@@ -755,7 +778,19 @@ export default function Home() {
                         onClick={() => {
                           const updatedIterations = ensureActualCumulativeCrossesTotalBudget();
                           if (updatedIterations.length > iterations.length) {
-                            setIterations(updatedIterations);
+                            // Preserve the current iteration state
+                            const currentIteration = iterations.find(it => it.isCurrent);
+                            
+                            if (currentIteration) {
+                              // Find and mark the same iteration as current in the updated list
+                              const updatedWithCurrentPreserved = updatedIterations.map(it => ({
+                                ...it,
+                                isCurrent: it.iterationNumber === currentIteration.iterationNumber
+                              }));
+                              setIterations(updatedWithCurrentPreserved);
+                            } else {
+                              setIterations(updatedIterations);
+                            }
                             
                             // Update the next iteration number for manual additions
                             const maxIterationNumber = Math.max(...updatedIterations.map(it => it.iterationNumber));
@@ -1007,87 +1042,127 @@ export default function Home() {
                         </Card>
                       </div>
                       
-                      <div className="h-[500px] w-full" ref={chartRef}>
-                        <ChartContainer
-                          config={{
-                            individualCost: { label: "Individual Cost", color: "#4f46e5" },
-                            cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
-                            cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
-                          }}
-                        >
-                          <ComposedChart
-                            data={chartData}
-                            margin={{ top: 10, right: 30, left: 0, bottom: 70 }}
+                      <div className="space-y-4">
+                        <div className="flex justify-center">
+                          <ToggleGroup 
+                            type="multiple" 
+                            value={visibleChartItems}
+                            onValueChange={(value) => {
+                              // Ensure at least one item is always visible
+                              if (value.length > 0) {
+                                setVisibleChartItems(value);
+                              }
+                            }}
                           >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis 
-                              dataKey="name" 
-                              allowDataOverflow={false}
-                              angle={-45}
-                              textAnchor="end"
-                              height={70}
-                              interval={0}
-                            />
-                            {/* Primary Y-axis for cumulative costs */}
-                            <YAxis 
-                              yAxisId="right"
-                              orientation="right"
-                              domain={[0, 'auto']}
-                              label={{ value: `Cumulative Cost (${budgetParams.currency})`, angle: -90, position: 'insideRight' }}
-                            />
-                            {/* Secondary Y-axis for individual iteration costs */}
-                            <YAxis 
-                              yAxisId="left"
-                              orientation="left"
-                              domain={[0, 250000]}
-                              label={{ value: `Iteration Cost (${budgetParams.currency})`, angle: -90, position: 'insideLeft' }}
-                            />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            {/* Red dotted horizontal line at total budget level */}
-                            <RechartsPrimitive.ReferenceLine 
-                              y={budgetParams.budgetSize} 
-                              yAxisId="right" 
-                              stroke="red" 
-                              strokeDasharray="5 5" 
-                              label={{ 
-                                value: "Total Budget", 
-                                position: "insideTopRight",
-                                fill: "red",
-                                fontSize: 12
-                              }} 
-                            />
-                            <Area
-                              yAxisId="right"
-                              type="monotone"
-                              dataKey="cumulativeStandard"
-                              stroke="#10b981"
-                              fill="#10b981"
-                              fillOpacity={0.1}
-                              strokeWidth={2}
-                              name="Standard Cumulative"
-                            />
-                            <Area
-                              yAxisId="right"
-                              type="monotone"
-                              dataKey="cumulativeActual"
-                              stroke="#f59e0b"
-                              fill="#f59e0b"
-                              fillOpacity={0.1}
-                              strokeWidth={2}
-                              name="Actual Cumulative"
-                            />
-                            {/* Blue bars for individual iteration costs */}
-                            <Bar
-                              yAxisId="left"
-                              dataKey="iterationCost"
-                              fill="#4f46e5"
-                              fillOpacity={0.6}
-                              name="Individual Cost"
-                              barSize={20}
-                            />
-                            <Legend />
-                          </ComposedChart>
-                        </ChartContainer>
+                            <ToggleGroupItem value="standardCumulative" aria-label="Toggle Standard Cumulative">
+                              <span className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-[#10b981]"></span>
+                                Standard Cumulative
+                              </span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="actualCumulative" aria-label="Toggle Actual Cumulative">
+                              <span className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span>
+                                Actual Cumulative
+                              </span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="individualCost" aria-label="Toggle Individual Cost">
+                              <span className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-[#4f46e5]"></span>
+                                Individual Cost
+                              </span>
+                            </ToggleGroupItem>
+                          </ToggleGroup>
+                        </div>
+                        
+                        <div className="h-[500px] w-full" ref={chartRef}>
+                          <ChartContainer
+                            config={{
+                              individualCost: { label: "Individual Cost", color: "#4f46e5" },
+                              cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
+                              cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
+                            }}
+                          >
+                            <ComposedChart
+                              data={chartData}
+                              margin={{ top: 10, right: 30, left: 0, bottom: 70 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis 
+                                dataKey="name" 
+                                allowDataOverflow={false}
+                                angle={-45}
+                                textAnchor="end"
+                                height={70}
+                                interval={0}
+                              />
+                              {/* Primary Y-axis for cumulative costs */}
+                              <YAxis 
+                                yAxisId="right"
+                                orientation="right"
+                                domain={[0, 'auto']}
+                                label={{ value: `Cumulative Cost (${budgetParams.currency})`, angle: -90, position: 'insideRight' }}
+                              />
+                              {/* Secondary Y-axis for individual iteration costs */}
+                              <YAxis 
+                                yAxisId="left"
+                                orientation="left"
+                                domain={[0, 250000]}
+                                label={{ value: `Iteration Cost (${budgetParams.currency})`, angle: -90, position: 'insideLeft' }}
+                              />
+                              <ChartTooltip content={<ChartTooltipContent />} />
+                              {/* Red dotted horizontal line at total budget level */}
+                              <RechartsPrimitive.ReferenceLine 
+                                y={budgetParams.budgetSize} 
+                                yAxisId="right" 
+                                stroke="red" 
+                                strokeDasharray="5 5" 
+                                label={{ 
+                                  value: "Total Budget", 
+                                  position: "insideTopRight",
+                                  fill: "red",
+                                  fontSize: 12
+                                }} 
+                              />
+                              {visibleChartItems.includes("standardCumulative") && (
+                                <Area
+                                  yAxisId="right"
+                                  type="monotone"
+                                  dataKey="cumulativeStandard"
+                                  stroke="#10b981"
+                                  fill="#10b981"
+                                  fillOpacity={0.1}
+                                  strokeWidth={2}
+                                  name="Standard Cumulative"
+                                />
+                              )}
+                              {visibleChartItems.includes("actualCumulative") && (
+                                <Area
+                                  yAxisId="right"
+                                  type="monotone"
+                                  dataKey="cumulativeActual"
+                                  stroke="#f59e0b"
+                                  fill="#f59e0b"
+                                  fillOpacity={0.1}
+                                  strokeWidth={2}
+                                  name="Actual Cumulative"
+                                />
+                              )}
+                              {/* Blue bars for individual iteration costs */}
+                              {visibleChartItems.includes("individualCost") && (
+                                <Bar
+                                  yAxisId="left"
+                                  dataKey="iterationCost"
+                                  fill="#4f46e5"
+                                  fillOpacity={0.6}
+                                  name="Individual Cost"
+                                  barSize={20}
+                                />
+                              )}
+                              <Legend />
+                            </ComposedChart>
+                          </ChartContainer>
+                        </div>
                       </div>
                       
 

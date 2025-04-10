@@ -7,12 +7,14 @@ export interface SavedState {
   budgetParams: BudgetParams;
   iterations: IterationData[];
   chartData: ChartData[];
+  visibleChartItems?: string[];
 }
 
 export interface AppState {
   budgetParams: BudgetParams;
   iterations: IterationData[];
   chartData: ChartData[];
+  visibleChartItems?: string[];
 }
 
 const STORAGE_KEY = 'budget-app-saved-states';
@@ -42,7 +44,8 @@ export const saveState = (name: string, state: AppState): SavedState => {
     date: new Date().toISOString(),
     budgetParams: state.budgetParams,
     iterations: state.iterations,
-    chartData: state.chartData
+    chartData: state.chartData,
+    visibleChartItems: state.visibleChartItems
   };
   
   savedStates.push(newState);
@@ -66,7 +69,8 @@ export const loadState = (id: string): AppState | null => {
   return {
     budgetParams: state.budgetParams,
     iterations: state.iterations,
-    chartData: state.chartData
+    chartData: state.chartData,
+    visibleChartItems: state.visibleChartItems
   };
 };
 
