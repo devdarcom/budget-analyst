@@ -28,7 +28,8 @@ export default function Home() {
     costPerHour: 50,
     budgetSize: 100000,
     teamSize: 5,
-    workingDaysPerIteration: 10
+    workingDaysPerIteration: 10,
+    currency: "$"
   });
 
   // State for iteration data
@@ -145,7 +146,8 @@ export default function Home() {
               costPerHour: parseFloat(params.costPerHour) || 50,
               budgetSize: parseFloat(params.budgetSize) || 100000,
               teamSize: parseFloat(params.teamSize) || 5,
-              workingDaysPerIteration: parseFloat(params.workingDaysPerIteration) || 10
+              workingDaysPerIteration: parseFloat(params.workingDaysPerIteration) || 10,
+              currency: params.currency || "$"
             });
             // Reset pre-filled flag to allow regeneration of iterations with new parameters
             setIterationsPreFilled(false);
@@ -268,8 +270,8 @@ export default function Home() {
 
   // Generate CSV template for download
   const generateParametersTemplate = () => {
-    const headers = "costPerHour,budgetSize,teamSize,workingDaysPerIteration\n";
-    const values = `${budgetParams.costPerHour},${budgetParams.budgetSize},${budgetParams.teamSize},${budgetParams.workingDaysPerIteration}`;
+    const headers = "costPerHour,budgetSize,teamSize,workingDaysPerIteration,currency\n";
+    const values = `${budgetParams.costPerHour},${budgetParams.budgetSize},${budgetParams.teamSize},${budgetParams.workingDaysPerIteration},${budgetParams.currency}`;
     return headers + values;
   };
 
@@ -486,7 +488,13 @@ export default function Home() {
 
   // Handle loading a saved state
   const handleLoadState = (state: AppState) => {
-    setBudgetParams(state.budgetParams);
+    // Ensure currency is set when loading older states that might not have it
+    const updatedBudgetParams = {
+      ...state.budgetParams,
+      currency: state.budgetParams.currency || "$"
+    };
+    
+    setBudgetParams(updatedBudgetParams);
     setIterations(state.iterations);
     setChartData(state.chartData);
     setIterationsPreFilled(true);
@@ -538,7 +546,7 @@ export default function Home() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="costPerHour">Cost per Hour ($)</Label>
+                      <Label htmlFor="costPerHour">Cost per Hour ({budgetParams.currency})</Label>
                       <Input
                         id="costPerHour"
                         name="costPerHour"
@@ -549,7 +557,7 @@ export default function Home() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="budgetSize">Total Budget Size ($)</Label>
+                      <Label htmlFor="budgetSize">Total Budget Size ({budgetParams.currency})</Label>
                       <Input
                         id="budgetSize"
                         name="budgetSize"
@@ -583,26 +591,18 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <div className="pt-4 border-t border-border">
-                    <h3 className="text-lg font-medium mb-2">Import/Export Parameters</h3>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button variant="outline" onClick={() => downloadTemplate("parameters")}>
-                        Download Template
-                      </Button>
-                      <div className="relative">
-                        <Input
-                          ref={fileInputRef}
-                          type="file"
-                          accept=".csv"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                          id="csv-upload"
-                        />
-                        <Button onClick={() => fileInputRef.current?.click()}>
-                          Import CSV
-                        </Button>
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency Symbol</Label>
+                    <Input
+                      id="currency"
+                      name="currency"
+                      type="text"
+                      value={budgetParams.currency}
+                      onChange={handleParamChange}
+                      maxLength={3}
+                      placeholder="$"
+                    />
+                    <p className="text-xs text-muted-foreground">Enter up to 3 letters for currency (e.g., USD, EUR, GBP)</p>
                   </div>
                 </CardContent>
               </Card>
@@ -724,7 +724,7 @@ export default function Home() {
                             <TableHead>Days</TableHead>
                             <TableHead>Team Size</TableHead>
                             <TableHead>Total Hours</TableHead>
-                            <TableHead className="text-right">Est. Cost ($)</TableHead>
+                            <TableHead className="text-right">Est. Cost ({budgetParams.currency})</TableHead>
                             <TableHead className="text-center">Current</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -912,7 +912,7 @@ export default function Home() {
                           <CardContent className="pt-6">
                             <div className="text-center">
                               <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
-                              <h3 className="text-2xl font-bold">${budgetParams.budgetSize.toLocaleString()}</h3>
+                              <h3 className="text-2xl font-bold">{budgetParams.currency}{budgetParams.budgetSize.toLocaleString()}</h3>
                             </div>
                           </CardContent>
                         </Card>
@@ -921,7 +921,7 @@ export default function Home() {
                             <div className="text-center">
                               <p className="text-sm font-medium text-muted-foreground">Consumed Budget</p>
                               <h3 className="text-2xl font-bold">
-                                ${consumedBudget.toLocaleString()}
+                                {budgetParams.currency}{consumedBudget.toLocaleString()}
                               </h3>
                               <p className="text-xs text-muted-foreground mt-1">
                                 (up to current iteration)
@@ -954,23 +954,30 @@ export default function Home() {
                         >
                           <ComposedChart
                             data={chartData}
-                            margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 70 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" allowDataOverflow={false} />
+                            <XAxis 
+                              dataKey="name" 
+                              allowDataOverflow={false}
+                              angle={-45}
+                              textAnchor="end"
+                              height={70}
+                              interval={0}
+                            />
                             {/* Primary Y-axis for cumulative costs */}
                             <YAxis 
                               yAxisId="right"
                               orientation="right"
                               domain={[0, 'auto']}
-                              label={{ value: "Cumulative Cost ($)", angle: -90, position: 'insideRight' }}
+                              label={{ value: `Cumulative Cost (${budgetParams.currency})`, angle: -90, position: 'insideRight' }}
                             />
                             {/* Secondary Y-axis for individual iteration costs */}
                             <YAxis 
                               yAxisId="left"
                               orientation="left"
                               domain={[0, 250000]}
-                              label={{ value: "Iteration Cost ($)", angle: -90, position: 'insideLeft' }}
+                              label={{ value: `Iteration Cost (${budgetParams.currency})`, angle: -90, position: 'insideLeft' }}
                             />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             {/* Red dotted horizontal line at total budget level */}

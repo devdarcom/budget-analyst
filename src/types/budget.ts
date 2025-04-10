@@ -3,6 +3,7 @@ export interface BudgetParams {
   budgetSize: number;
   teamSize: number;
   workingDaysPerIteration: number;
+  currency: string;
 }
 
 export interface IterationData {
