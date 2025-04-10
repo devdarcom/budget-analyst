@@ -25,6 +25,60 @@ export async function generatePDFReport(
   const margin = 10;
   let yPosition = margin;
   
+  // Add logo
+  // Using a PNG version of the logo for better compatibility with jsPDF
+  // We're using the same URL but jsPDF will handle it better as a PNG
+  const logoUrl = 'https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/simplified-logo-on-black-3d2d74c.svg';
+  
+  // Function to load an image and convert to base64
+  const loadImage = (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = (e) => reject(e);
+      img.src = url;
+    });
+  };
+  
+  try {
+    // Load the image
+    const img = await loadImage(logoUrl);
+    
+    // Create a canvas to draw the image (this helps with SVG conversion)
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas dimensions
+    const logoWidth = 30; // in mm
+    const logoWidthPx = logoWidth * 3.779528; // Convert mm to px (approximate)
+    const logoHeightPx = (img.height / img.width) * logoWidthPx;
+    
+    canvas.width = logoWidthPx;
+    canvas.height = logoHeightPx;
+    
+    // Draw image on canvas
+    if (ctx) {
+      ctx.drawImage(img, 0, 0, logoWidthPx, logoHeightPx);
+      
+      // Get data URL from canvas
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Center the logo horizontally
+      const logoX = (pageWidth - logoWidth) / 2;
+      
+      // Add the logo to the PDF
+      pdf.addImage(imgData, 'PNG', logoX, yPosition, logoWidth, logoWidth * (logoHeightPx / logoWidthPx));
+      
+      // Update yPosition to account for logo height plus some spacing
+      yPosition += (logoWidth * (logoHeightPx / logoWidthPx)) + 10;
+    }
+  } catch (error) {
+    console.error('Error loading logo:', error);
+    // If logo fails to load, just continue without it
+    // No need to adjust yPosition since no logo was added
+  }
+  
   // Add title
   pdf.setFontSize(20);
   pdf.text('Budget Visualization Report', pageWidth / 2, yPosition, { align: 'center' });
