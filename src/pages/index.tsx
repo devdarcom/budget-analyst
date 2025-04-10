@@ -330,6 +330,78 @@ export default function Home() {
     return generatedIterations;
   };
   
+  // Check if actual cumulative crosses total budget and add iterations if needed
+  const ensureActualCumulativeCrossesTotalBudget = () => {
+    if (iterations.length === 0) return iterations;
+    
+    const { costPerHour, budgetSize, teamSize, workingDaysPerIteration } = budgetParams;
+    const hoursPerIteration = 8 * teamSize * workingDaysPerIteration;
+    const costPerIteration = costPerHour * hoursPerIteration;
+    
+    // Skip if cost per iteration is zero (invalid parameters)
+    if (costPerIteration <= 0 || budgetSize <= 0) return iterations;
+    
+    // Sort iterations by iteration number
+    const sortedIterations = [...iterations].sort((a, b) => a.iterationNumber - b.iterationNumber);
+    
+    // Find the current iteration (if any)
+    const currentIteration = sortedIterations.find(it => it.isCurrent);
+    const currentIterationIndex = currentIteration 
+      ? sortedIterations.findIndex(it => it.iterationNumber === currentIteration.iterationNumber)
+      : sortedIterations.length - 1; // If no current iteration, use the last one
+    
+    // Calculate cumulative actual cost up to current iteration
+    let cumulativeActual = 0;
+    for (let i = 0; i <= currentIterationIndex; i++) {
+      const iteration = sortedIterations[i];
+      const totalHours = iteration.totalHours || (iteration.iterationDays * iteration.teamSize * 8);
+      cumulativeActual += costPerHour * totalHours;
+    }
+    
+    // Calculate standard cost per iteration for projections
+    const standardIterationCost = costPerHour * hoursPerIteration;
+    
+    // Project future iterations using standard cost
+    for (let i = currentIterationIndex + 1; i < sortedIterations.length; i++) {
+      cumulativeActual += standardIterationCost;
+    }
+    
+    // If cumulative actual doesn't cross total budget, add more iterations
+    if (cumulativeActual < budgetSize) {
+      const additionalIterationsNeeded = Math.ceil((budgetSize - cumulativeActual) / standardIterationCost);
+      const maxIterationNumber = sortedIterations.length > 0 
+        ? Math.max(...sortedIterations.map(it => it.iterationNumber))
+        : 0;
+      
+      // Limit total iterations to 100
+      const iterationsToAdd = Math.min(additionalIterationsNeeded, 100 - sortedIterations.length);
+      
+      if (iterationsToAdd <= 0) return sortedIterations; // No more iterations can be added
+      
+      // Add new iterations
+      const newIterations = [...sortedIterations];
+      
+      // First, remove current flag from all iterations
+      newIterations.forEach(it => it.isCurrent = false);
+      
+      // Add additional iterations
+      for (let i = 1; i <= iterationsToAdd; i++) {
+        const newIterationNumber = maxIterationNumber + i;
+        newIterations.push({
+          iterationNumber: newIterationNumber,
+          iterationDays: workingDaysPerIteration,
+          teamSize: teamSize,
+          totalHours: hoursPerIteration,
+          isCurrent: i === iterationsToAdd // Mark the last new iteration as current
+        });
+      }
+      
+      return newIterations;
+    }
+    
+    return sortedIterations;
+  };
+  
   // Pre-fill iterations when budget parameters change
   useEffect(() => {
     // Only pre-fill if no iterations exist yet and we haven't pre-filled before
@@ -348,14 +420,42 @@ export default function Home() {
     }
   }, [budgetParams, iterations.length, iterationsPreFilled]);
 
-  // Calculate budget consumption percentage
-  const calculateBudgetConsumption = () => {
-    if (chartData.length === 0 || budgetParams.budgetSize === 0) return 0;
-    const latestData = chartData[chartData.length - 1];
-    return (latestData.cumulativeActual / budgetParams.budgetSize) * 100;
+  // Calculate budget consumption percentage and consumed budget based on current iteration
+  const calculateBudgetMetrics = () => {
+    if (chartData.length === 0 || budgetParams.budgetSize === 0) return { percentage: 0, consumed: 0 };
+    
+    // Find the current iteration in chart data
+    const sortedIterations = [...iterations].sort((a, b) => a.iterationNumber - b.iterationNumber);
+    const currentIteration = sortedIterations.find(it => it.isCurrent);
+    
+    if (!currentIteration) {
+      // If no current iteration, use the last data point
+      const latestData = chartData[chartData.length - 1];
+      return {
+        percentage: (latestData.cumulativeActual / budgetParams.budgetSize) * 100,
+        consumed: latestData.cumulativeActual
+      };
+    }
+    
+    // Find the chart data point corresponding to the current iteration
+    const currentDataPoint = chartData.find(data => data.name === `Iteration ${currentIteration.iterationNumber}`);
+    
+    if (!currentDataPoint) {
+      // Fallback to last data point if current iteration not found in chart data
+      const latestData = chartData[chartData.length - 1];
+      return {
+        percentage: (latestData.cumulativeActual / budgetParams.budgetSize) * 100,
+        consumed: latestData.cumulativeActual
+      };
+    }
+    
+    return {
+      percentage: (currentDataPoint.cumulativeActual / budgetParams.budgetSize) * 100,
+      consumed: currentDataPoint.cumulativeActual
+    };
   };
 
-  const budgetConsumptionPercentage = calculateBudgetConsumption();
+  const { percentage: budgetConsumptionPercentage, consumed: consumedBudget } = calculateBudgetMetrics();
 
   // Handle PDF report generation
   const handleGeneratePDF = async () => {
@@ -567,25 +667,49 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <div className="flex justify-between">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setIterations(generateIterationsToFullBudget());
-                        setIterationsPreFilled(true);
-                        
-                        // Update the next iteration number for manual additions
-                        const generatedIterations = generateIterationsToFullBudget();
-                        setNewIteration(prev => ({
-                          ...prev,
-                          iterationNumber: generatedIterations.length + 1
-                        }));
-                        
-                        toast.success("Iterations regenerated based on current parameters");
-                      }}
-                    >
-                      Regenerate Iterations
-                    </Button>
+                  <div className="flex flex-wrap gap-2 justify-between">
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIterations(generateIterationsToFullBudget());
+                          setIterationsPreFilled(true);
+                          
+                          // Update the next iteration number for manual additions
+                          const generatedIterations = generateIterationsToFullBudget();
+                          setNewIteration(prev => ({
+                            ...prev,
+                            iterationNumber: generatedIterations.length + 1
+                          }));
+                          
+                          toast.success("Iterations regenerated based on current parameters");
+                        }}
+                      >
+                        Regenerate Iterations
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          const updatedIterations = ensureActualCumulativeCrossesTotalBudget();
+                          if (updatedIterations.length > iterations.length) {
+                            setIterations(updatedIterations);
+                            
+                            // Update the next iteration number for manual additions
+                            const maxIterationNumber = Math.max(...updatedIterations.map(it => it.iterationNumber));
+                            setNewIteration(prev => ({
+                              ...prev,
+                              iterationNumber: maxIterationNumber + 1
+                            }));
+                            
+                            toast.success(`Added ${updatedIterations.length - iterations.length} iterations to reach total budget`);
+                          } else {
+                            toast.info("No additional iterations needed - budget will be reached with current iterations");
+                          }
+                        }}
+                      >
+                        Add Iterations to Reach Budget
+                      </Button>
+                    </div>
                     <Button onClick={addIteration}>
                       Add Iteration
                     </Button>
@@ -797,8 +921,11 @@ export default function Home() {
                             <div className="text-center">
                               <p className="text-sm font-medium text-muted-foreground">Consumed Budget</p>
                               <h3 className="text-2xl font-bold">
-                                ${(chartData.length > 0 ? chartData[chartData.length - 1].cumulativeActual : 0).toLocaleString()}
+                                ${consumedBudget.toLocaleString()}
                               </h3>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                (up to current iteration)
+                              </p>
                             </div>
                           </CardContent>
                         </Card>
@@ -809,6 +936,9 @@ export default function Home() {
                               <h3 className="text-2xl font-bold">
                                 {budgetConsumptionPercentage.toFixed(1)}%
                               </h3>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                (at current iteration)
+                              </p>
                             </div>
                           </CardContent>
                         </Card>
