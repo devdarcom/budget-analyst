@@ -587,7 +587,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>Budget Visualization</CardTitle>
                   <CardDescription>
-                    Visualize your budget consumption across iterations. The chart shows cumulative costs (left axis) and individual iteration costs (right axis) in a single view.
+                    Visualize your budget consumption across iterations. The chart shows cumulative costs and individual iteration costs in a single view.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -627,7 +627,6 @@ export default function Home() {
                       <div className="h-[500px] w-full">
                         <ChartContainer
                           config={{
-                            iterationCost: { label: "Iteration Cost", color: "#4f46e5" },
                             individualCost: { label: "Individual Cost", color: "#4f46e5" },
                             cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
                             cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
@@ -639,21 +638,13 @@ export default function Home() {
                           >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="name" />
-                            {/* Left Y-axis for cumulative values */}
+                            {/* Y-axis for all values */}
                             <YAxis 
-                              yAxisId="left"
                               orientation="left"
-                              label={{ value: "Cumulative Cost ($)", angle: -90, position: 'insideLeft' }}
-                            />
-                            {/* Right Y-axis for iteration costs */}
-                            <YAxis 
-                              yAxisId="right" 
-                              orientation="right"
-                              label={{ value: "Iteration Cost ($)", angle: 90, position: 'insideRight' }}
+                              label={{ value: "Cost ($)", angle: -90, position: 'insideLeft' }}
                             />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             <Area
-                              yAxisId="left"
                               type="monotone"
                               dataKey="cumulativeStandard"
                               stroke="#10b981"
@@ -663,7 +654,6 @@ export default function Home() {
                               name="Standard Cumulative"
                             />
                             <Area
-                              yAxisId="left"
                               type="monotone"
                               dataKey="cumulativeActual"
                               stroke="#f59e0b"
@@ -672,20 +662,8 @@ export default function Home() {
                               strokeWidth={2}
                               name="Actual Cumulative"
                             />
-                            {/* Line for iteration costs with dots */}
-                            <Line
-                              yAxisId="right"
-                              type="monotone"
-                              dataKey="iterationCost"
-                              stroke="#4f46e5"
-                              strokeWidth={2}
-                              dot={{ r: 4, fill: "#4f46e5" }}
-                              activeDot={{ r: 6, fill: "#4f46e5" }}
-                              name="Iteration Cost"
-                            />
                             {/* Blue bars for individual iteration costs */}
                             <Bar
-                              yAxisId="right"
                               dataKey="iterationCost"
                               fill="#4f46e5"
                               fillOpacity={0.6}
