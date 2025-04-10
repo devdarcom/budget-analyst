@@ -1,7 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { BudgetParams, IterationData, ChartData } from '@/types/budget';
-import { logoBase64 } from './logoBase64';
 
 // Helper function to format numbers with K suffix
 const formatNumberWithSuffix = (value: number): string => {
@@ -25,29 +24,6 @@ export async function generatePDFReport(
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 10;
   let yPosition = margin;
-  
-  // Add logo using base64 encoded data
-  try {
-    console.log('Adding logo using base64 data');
-    
-    // Define logo dimensions
-    const logoWidth = 60; // in mm
-    const logoHeight = 20; // in mm
-    
-    // Center the logo horizontally
-    const logoX = (pageWidth - logoWidth) / 2;
-    
-    // Add the logo to the PDF using base64 data
-    pdf.addImage(logoBase64, 'SVG', logoX, yPosition, logoWidth, logoHeight);
-    console.log('Logo added to PDF');
-    
-    // Update yPosition to account for logo height plus some spacing
-    yPosition += logoHeight + 10;
-  } catch (error) {
-    console.error('Error loading logo:', error);
-    // If logo fails to load, just continue without it
-    // No need to adjust yPosition since no logo was added
-  }
   
   // Add title
   pdf.setFontSize(20);
