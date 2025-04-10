@@ -396,45 +396,49 @@ export default function Home() {
     // Calculate standard cost per iteration for projections
     const standardIterationCost = costPerHour * hoursPerIteration;
     
-    // Project future iterations using standard cost
+    // Calculate projected cumulative cost with existing iterations
+    let projectedCumulative = cumulativeActual;
     for (let i = currentIterationIndex + 1; i < sortedIterations.length; i++) {
-      cumulativeActual += standardIterationCost;
+      projectedCumulative += standardIterationCost;
     }
     
-    // If cumulative actual doesn't cross total budget, add more iterations
-    if (cumulativeActual < budgetSize) {
-      const additionalIterationsNeeded = Math.ceil((budgetSize - cumulativeActual) / standardIterationCost);
-      const maxIterationNumber = sortedIterations.length > 0 
-        ? Math.max(...sortedIterations.map(it => it.iterationNumber))
-        : 0;
-      
-      // Limit total iterations to 100
-      const iterationsToAdd = Math.min(additionalIterationsNeeded, 100 - sortedIterations.length);
-      
-      if (iterationsToAdd <= 0) return sortedIterations; // No more iterations can be added
-      
-      // Add new iterations
-      const newIterations = [...sortedIterations];
-      
-      // First, remove current flag from all iterations
-      newIterations.forEach(it => it.isCurrent = false);
-      
-      // Add additional iterations
-      for (let i = 1; i <= iterationsToAdd; i++) {
-        const newIterationNumber = maxIterationNumber + i;
-        newIterations.push({
-          iterationNumber: newIterationNumber,
-          iterationDays: workingDaysPerIteration,
-          teamSize: teamSize,
-          totalHours: hoursPerIteration,
-          isCurrent: i === iterationsToAdd // Mark the last new iteration as current
-        });
-      }
-      
-      return newIterations;
+    // If projected cumulative already exceeds or equals budget, no need to add more iterations
+    if (projectedCumulative >= budgetSize) {
+      return sortedIterations;
     }
     
-    return sortedIterations;
+    // Calculate exactly how many iterations are needed to just exceed the budget
+    const remainingBudget = budgetSize - projectedCumulative;
+    const additionalIterationsNeeded = Math.ceil(remainingBudget / standardIterationCost);
+    
+    const maxIterationNumber = sortedIterations.length > 0 
+      ? Math.max(...sortedIterations.map(it => it.iterationNumber))
+      : 0;
+    
+    // Limit total iterations to 100
+    const iterationsToAdd = Math.min(additionalIterationsNeeded, 100 - sortedIterations.length);
+    
+    if (iterationsToAdd <= 0) return sortedIterations; // No more iterations can be added
+    
+    // Add new iterations
+    const newIterations = [...sortedIterations];
+    
+    // First, remove current flag from all iterations
+    newIterations.forEach(it => it.isCurrent = false);
+    
+    // Add additional iterations
+    for (let i = 1; i <= iterationsToAdd; i++) {
+      const newIterationNumber = maxIterationNumber + i;
+      newIterations.push({
+        iterationNumber: newIterationNumber,
+        iterationDays: workingDaysPerIteration,
+        teamSize: teamSize,
+        totalHours: hoursPerIteration,
+        isCurrent: i === iterationsToAdd // Mark the last new iteration as current
+      });
+    }
+    
+    return newIterations;
   };
   
   // Pre-fill iterations when budget parameters change
