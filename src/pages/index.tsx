@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Bar, BarChart, ResponsiveContainer, Line, ComposedChart } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Bar, BarChart, ResponsiveContainer, Line, ComposedChart, ReferenceLine } from "recharts";
+import * as RechartsPrimitive from "recharts";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { generatePDFReport } from "@/util/pdfGenerator";
@@ -807,6 +808,19 @@ export default function Home() {
                               label={{ value: "Iteration Cost ($)", angle: -90, position: 'insideLeft' }}
                             />
                             <ChartTooltip content={<ChartTooltipContent />} />
+                            {/* Red dotted horizontal line at total budget level */}
+                            <RechartsPrimitive.ReferenceLine 
+                              y={budgetParams.budgetSize} 
+                              yAxisId="right" 
+                              stroke="red" 
+                              strokeDasharray="5 5" 
+                              label={{ 
+                                value: "Total Budget", 
+                                position: "insideTopRight",
+                                fill: "red",
+                                fontSize: 12
+                              }} 
+                            />
                             <Area
                               yAxisId="right"
                               type="monotone"
