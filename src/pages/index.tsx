@@ -35,7 +35,8 @@ export default function Home() {
   const [newIteration, setNewIteration] = useState<IterationData>({
     iterationNumber: 1,
     iterationDays: 10,
-    teamSize: 5
+    teamSize: 5,
+    totalHours: 10 * 5 * 8 // Default: days * team size * 8 hours
   });
   
   // Flag to track if iterations have been pre-filled
@@ -65,10 +66,22 @@ export default function Home() {
   // Handle new iteration input changes
   const handleIterationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewIteration(prev => ({
-      ...prev,
-      [name]: parseFloat(value) || 0
-    }));
+    const numValue = parseFloat(value) || 0;
+    
+    setNewIteration(prev => {
+      const updated = {
+        ...prev,
+        [name]: numValue
+      };
+      
+      // Auto-calculate total hours when days or team size changes
+      // Only if totalHours hasn't been manually set
+      if ((name === 'iterationDays' || name === 'teamSize') && name !== 'totalHours') {
+        updated.totalHours = updated.iterationDays * updated.teamSize * 8;
+      }
+      
+      return updated;
+    });
   };
 
   // Add a new iteration
@@ -89,13 +102,26 @@ export default function Home() {
       return;
     }
 
-    setIterations(prev => [...prev, { ...newIteration }]);
+    // Ensure totalHours is calculated if not set
+    const iterationToAdd = { ...newIteration };
+    if (!iterationToAdd.totalHours || iterationToAdd.totalHours <= 0) {
+      iterationToAdd.totalHours = iterationToAdd.iterationDays * iterationToAdd.teamSize * 8;
+    }
+
+    setIterations(prev => [...prev, iterationToAdd]);
     
-    // Set next iteration number
-    setNewIteration(prev => ({
-      ...prev,
-      iterationNumber: prev.iterationNumber + 1
-    }));
+    // Set next iteration number and recalculate total hours for the new iteration
+    setNewIteration(prev => {
+      const nextIteration = {
+        ...prev,
+        iterationNumber: prev.iterationNumber + 1
+      };
+      
+      // Recalculate total hours for the new iteration
+      nextIteration.totalHours = nextIteration.iterationDays * nextIteration.teamSize * 8;
+      
+      return nextIteration;
+    });
   };
 
   // Handle CSV file import
@@ -129,11 +155,21 @@ export default function Home() {
               toast.error("CSV contains more than 100 iterations. Only the first 100 will be imported.");
             }
             
-            const newIterations = parsedData.slice(0, 100).map((item: any) => ({
-              iterationNumber: parseFloat(item.iterationNumber) || 0,
-              iterationDays: parseFloat(item.iterationDays) || 0,
-              teamSize: parseFloat(item.teamSize) || 0
-            }));
+            const newIterations = parsedData.slice(0, 100).map((item: any) => {
+              const iteration = {
+                iterationNumber: parseFloat(item.iterationNumber) || 0,
+                iterationDays: parseFloat(item.iterationDays) || 0,
+                teamSize: parseFloat(item.teamSize) || 0,
+                totalHours: parseFloat(item.totalHours) || 0
+              };
+              
+              // If totalHours is not provided or is zero, calculate it
+              if (!iteration.totalHours) {
+                iteration.totalHours = iteration.iterationDays * iteration.teamSize * 8;
+              }
+              
+              return iteration;
+            });
             
             // Validate data
             const validIterations = newIterations.filter(it => 
@@ -170,7 +206,8 @@ export default function Home() {
   // Calculate chart data whenever parameters or iterations change
   useEffect(() => {
     const { costPerHour, teamSize, workingDaysPerIteration } = budgetParams;
-    const standardIterationCost = costPerHour * 8 * teamSize * workingDaysPerIteration;
+    const standardHoursPerIteration = 8 * teamSize * workingDaysPerIteration;
+    const standardIterationCost = costPerHour * standardHoursPerIteration;
     
     // Sort iterations by iteration number
     const sortedIterations = [...iterations].sort((a, b) => a.iterationNumber - b.iterationNumber);
@@ -190,8 +227,11 @@ export default function Home() {
     
     // Add data points for each iteration
     sortedIterations.forEach(iteration => {
-      // Calculate the cost for this iteration
-      const iterationCost = costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
+      // Get total hours (use calculated value if not set)
+      const totalHours = iteration.totalHours || (iteration.iterationDays * iteration.teamSize * 8);
+      
+      // Calculate the cost for this iteration using total hours
+      const iterationCost = costPerHour * totalHours;
       
       cumulativeStandard += standardIterationCost;
       cumulativeActual += iterationCost;
@@ -215,9 +255,11 @@ export default function Home() {
   };
 
   const generateIterationsTemplate = () => {
-    const headers = "iterationNumber,iterationDays,teamSize\n";
-    const values = iterations.map(it => `${it.iterationNumber},${it.iterationDays},${it.teamSize}`).join("\n");
-    return headers + (values || "1,10,5");
+    const headers = "iterationNumber,iterationDays,teamSize,totalHours\n";
+    const values = iterations.map(it => 
+      `${it.iterationNumber},${it.iterationDays},${it.teamSize},${it.totalHours || it.iterationDays * it.teamSize * 8}`
+    ).join("\n");
+    return headers + (values || "1,10,5,400");
   };
 
   const downloadTemplate = (type: "parameters" | "iterations") => {
@@ -239,8 +281,11 @@ export default function Home() {
   const generateIterationsToFullBudget = () => {
     const { costPerHour, budgetSize, teamSize, workingDaysPerIteration } = budgetParams;
     
+    // Calculate hours per iteration
+    const hoursPerIteration = 8 * teamSize * workingDaysPerIteration;
+    
     // Calculate cost per iteration with default parameters
-    const costPerIteration = costPerHour * 8 * teamSize * workingDaysPerIteration;
+    const costPerIteration = costPerHour * hoursPerIteration;
     
     // Skip if cost per iteration is zero (invalid parameters)
     if (costPerIteration <= 0 || budgetSize <= 0) return [];
@@ -257,7 +302,8 @@ export default function Home() {
       generatedIterations.push({
         iterationNumber: i,
         iterationDays: workingDaysPerIteration,
-        teamSize: teamSize
+        teamSize: teamSize,
+        totalHours: hoursPerIteration
       });
     }
     
@@ -453,7 +499,7 @@ export default function Home() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="iterationNumber">Iteration Number</Label>
                       <Input
@@ -485,6 +531,18 @@ export default function Home() {
                         value={newIteration.teamSize}
                         onChange={handleIterationChange}
                         min="1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="totalHours">Total Hours</Label>
+                      <Input
+                        id="totalHours"
+                        name="totalHours"
+                        type="number"
+                        value={newIteration.totalHours}
+                        onChange={handleIterationChange}
+                        min="1"
+                        placeholder={`Default: ${newIteration.iterationDays * newIteration.teamSize * 8}`}
                       />
                     </div>
                   </div>
@@ -521,6 +579,7 @@ export default function Home() {
                             <TableHead>Iteration #</TableHead>
                             <TableHead>Days</TableHead>
                             <TableHead>Team Size</TableHead>
+                            <TableHead>Total Hours</TableHead>
                             <TableHead className="text-right">Est. Cost ($)</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -528,7 +587,10 @@ export default function Home() {
                           {[...iterations]
                             .sort((a, b) => a.iterationNumber - b.iterationNumber)
                             .map((iteration, index) => {
-                              const cost = budgetParams.costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
+                              // Calculate total hours if not set
+                              const totalHours = iteration.totalHours || iteration.iterationDays * iteration.teamSize * 8;
+                              // Use total hours for cost calculation
+                              const cost = budgetParams.costPerHour * totalHours;
                               return (
                                 <TableRow key={iteration.iterationNumber}>
                                   <TableCell>{iteration.iterationNumber}</TableCell>
@@ -548,9 +610,17 @@ export default function Home() {
                                           .sort((a, b) => a.iterationNumber - b.iterationNumber)
                                           .findIndex(it => it.iterationNumber === iteration.iterationNumber);
                                         if (sortedIndex !== -1) {
+                                          // Update days and recalculate total hours if it wasn't manually set
+                                          const currentIteration = updatedIterations[sortedIndex];
+                                          const wasManuallySet = currentIteration.totalHours !== currentIteration.iterationDays * currentIteration.teamSize * 8;
+                                          
                                           updatedIterations[sortedIndex] = {
-                                            ...updatedIterations[sortedIndex],
-                                            iterationDays: value
+                                            ...currentIteration,
+                                            iterationDays: value,
+                                            // Only auto-update total hours if it wasn't manually set
+                                            ...(!wasManuallySet && {
+                                              totalHours: value * currentIteration.teamSize * 8
+                                            })
                                           };
                                           setIterations(updatedIterations);
                                           toast.success(`Updated days for iteration ${iteration.iterationNumber}`);
@@ -575,12 +645,47 @@ export default function Home() {
                                           .sort((a, b) => a.iterationNumber - b.iterationNumber)
                                           .findIndex(it => it.iterationNumber === iteration.iterationNumber);
                                         if (sortedIndex !== -1) {
+                                          // Update team size and recalculate total hours if it wasn't manually set
+                                          const currentIteration = updatedIterations[sortedIndex];
+                                          const wasManuallySet = currentIteration.totalHours !== currentIteration.iterationDays * currentIteration.teamSize * 8;
+                                          
                                           updatedIterations[sortedIndex] = {
-                                            ...updatedIterations[sortedIndex],
-                                            teamSize: value
+                                            ...currentIteration,
+                                            teamSize: value,
+                                            // Only auto-update total hours if it wasn't manually set
+                                            ...(!wasManuallySet && {
+                                              totalHours: currentIteration.iterationDays * value * 8
+                                            })
                                           };
                                           setIterations(updatedIterations);
                                           toast.success(`Updated team size for iteration ${iteration.iterationNumber}`);
+                                        }
+                                      }}
+                                      className="h-8 w-20 transition-colors hover:border-primary focus:border-primary"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      value={totalHours}
+                                      onChange={(e) => {
+                                        const value = parseFloat(e.target.value) || 0;
+                                        if (value <= 0) {
+                                          toast.error("Total hours must be greater than zero");
+                                          return;
+                                        }
+                                        const updatedIterations = [...iterations];
+                                        const sortedIndex = updatedIterations
+                                          .sort((a, b) => a.iterationNumber - b.iterationNumber)
+                                          .findIndex(it => it.iterationNumber === iteration.iterationNumber);
+                                        if (sortedIndex !== -1) {
+                                          updatedIterations[sortedIndex] = {
+                                            ...updatedIterations[sortedIndex],
+                                            totalHours: value
+                                          };
+                                          setIterations(updatedIterations);
+                                          toast.success(`Updated total hours for iteration ${iteration.iterationNumber}`);
                                         }
                                       }}
                                       className="h-8 w-20 transition-colors hover:border-primary focus:border-primary"

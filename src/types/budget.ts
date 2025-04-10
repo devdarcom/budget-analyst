@@ -9,6 +9,7 @@ export interface IterationData {
   iterationNumber: number;
   iterationDays: number;
   teamSize: number;
+  totalHours?: number; // Optional to maintain backward compatibility
 }
 
 export interface ChartData {

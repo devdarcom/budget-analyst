@@ -103,13 +103,19 @@ export async function generatePDFReport(
     // Calculate the budget consumption for each iteration
     let cumulativeCost = 0;
     const iterationBudgetData = sortedIterations.map(iteration => {
-      const iterationCost = budgetParams.costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
+      // Get total hours (use calculated value if not set)
+      const totalHours = iteration.totalHours || (iteration.iterationDays * iteration.teamSize * 8);
+      
+      // Calculate cost using total hours
+      const iterationCost = budgetParams.costPerHour * totalHours;
+      
       cumulativeCost += iterationCost;
       const remainingBudget = budgetParams.budgetSize - cumulativeCost;
       const budgetConsumed = (cumulativeCost / budgetParams.budgetSize) * 100;
       
       return {
         ...iteration,
+        totalHours,
         iterationCost,
         cumulativeCost,
         remainingBudget,
@@ -122,8 +128,8 @@ export async function generatePDFReport(
     const budgetFullyConsumedIndex = iterationBudgetData.findIndex(data => data.remainingBudget < 0);
     
     // Table headers
-    const headers = ['Iteration #', 'Days', 'Team Size', 'Cost ($)', 'Cumulative ($)', 'Remaining ($)', 'Consumed (%)'];
-    const colWidths = [20, 15, 20, 25, 30, 30, 30];
+    const headers = ['Iteration #', 'Days', 'Team Size', 'Hours', 'Cost ($)', 'Cumulative ($)', 'Remaining ($)', 'Consumed (%)'];
+    const colWidths = [18, 12, 15, 15, 22, 25, 25, 25];
     
     // Calculate total width
     const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
@@ -183,14 +189,17 @@ export async function generatePDFReport(
       pdf.text(data.teamSize.toString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[2];
       
-      pdf.text(data.iterationCost.toLocaleString(), xOffset + 2, yPosition + 5);
+      pdf.text(data.totalHours.toString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[3];
       
-      pdf.text(data.cumulativeCost.toLocaleString(), xOffset + 2, yPosition + 5);
+      pdf.text(data.iterationCost.toLocaleString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[4];
       
-      pdf.text(data.remainingBudget.toLocaleString(), xOffset + 2, yPosition + 5);
+      pdf.text(data.cumulativeCost.toLocaleString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[5];
+      
+      pdf.text(data.remainingBudget.toLocaleString(), xOffset + 2, yPosition + 5);
+      xOffset += colWidths[6];
       
       pdf.text(`${data.budgetConsumed.toFixed(1)}%`, xOffset + 2, yPosition + 5);
       
