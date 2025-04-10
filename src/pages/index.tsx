@@ -14,6 +14,8 @@ import Papa from "papaparse";
 import { toast } from "sonner";
 import { generatePDFReport } from "@/util/pdfGenerator";
 import { BudgetParams, IterationData, ChartData } from "@/types/budget";
+import SaveStateManager from "@/components/SaveStateManager";
+import { AppState } from "@/util/stateManager";
 
 // Component implementation
 
@@ -307,6 +309,32 @@ export default function Home() {
     }
   };
 
+  // Get current application state for saving/loading
+  const getCurrentAppState = (): AppState => {
+    return {
+      budgetParams,
+      iterations,
+      chartData
+    };
+  };
+
+  // Handle loading a saved state
+  const handleLoadState = (state: AppState) => {
+    setBudgetParams(state.budgetParams);
+    setIterations(state.iterations);
+    setChartData(state.chartData);
+    setIterationsPreFilled(true);
+    
+    // Update the next iteration number for manual additions
+    if (state.iterations.length > 0) {
+      const maxIterationNumber = Math.max(...state.iterations.map(it => it.iterationNumber));
+      setNewIteration(prev => ({
+        ...prev,
+        iterationNumber: maxIterationNumber + 1
+      }));
+    }
+  };
+
   return (
     <>
       <Head>
@@ -318,7 +346,13 @@ export default function Home() {
       <div className="bg-background min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 container mx-auto py-6 px-4 space-y-6">
-          <h1 className="text-3xl font-bold">Budget Visualization Tool</h1>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <h1 className="text-3xl font-bold">Budget Visualization Tool</h1>
+            <SaveStateManager 
+              currentState={getCurrentAppState()} 
+              onLoadState={handleLoadState} 
+            />
+          </div>
           
           <Tabs defaultValue="parameters" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
