@@ -31,9 +31,9 @@ export async function generatePDFReport(
   yPosition += 8;
   
   pdf.setFontSize(12);
-  pdf.text(`Cost per Hour: $${budgetParams.costPerHour}`, margin, yPosition);
+  pdf.text(`Cost per Hour: ${budgetParams.currency}${budgetParams.costPerHour}`, margin, yPosition);
   yPosition += 6;
-  pdf.text(`Total Budget Size: $${budgetParams.budgetSize.toLocaleString()}`, margin, yPosition);
+  pdf.text(`Total Budget Size: ${budgetParams.currency}${budgetParams.budgetSize.toLocaleString()}`, margin, yPosition);
   yPosition += 6;
   pdf.text(`Default Team Size: ${budgetParams.teamSize} people`, margin, yPosition);
   yPosition += 6;
@@ -127,9 +127,9 @@ export async function generatePDFReport(
     // Find the iteration where budget is fully consumed
     const budgetFullyConsumedIndex = iterationBudgetData.findIndex(data => data.remainingBudget < 0);
     
-    // Table headers
-    const headers = ['Iteration #', 'Days', 'Team Size', 'Hours', 'Cost ($)', 'Cumulative ($)', 'Remaining ($)', 'Consumed (%)'];
-    const colWidths = [18, 12, 15, 15, 22, 25, 25, 25];
+    // Table headers - removed 'Days' and 'Team Size' columns as requested
+    const headers = ['Iteration #', 'Hours', `Cost (${budgetParams.currency})`, `Cumulative (${budgetParams.currency})`, `Remaining (${budgetParams.currency})`, 'Consumed (%)'];
+    const colWidths = [18, 20, 25, 30, 30, 30];
     
     // Calculate total width
     const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
@@ -177,29 +177,23 @@ export async function generatePDFReport(
         pdf.rect(startX, yPosition, tableWidth, 8, 'F');
       }
       
-      // Draw row data
+      // Draw row data - removed 'Days' and 'Team Size' columns
       xOffset = startX;
       
       pdf.text(data.iterationNumber.toString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[0];
       
-      pdf.text(data.iterationDays.toString(), xOffset + 2, yPosition + 5);
+      pdf.text(data.totalHours.toString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[1];
       
-      pdf.text(data.teamSize.toString(), xOffset + 2, yPosition + 5);
+      pdf.text(data.iterationCost.toLocaleString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[2];
       
-      pdf.text(data.totalHours.toString(), xOffset + 2, yPosition + 5);
+      pdf.text(data.cumulativeCost.toLocaleString(), xOffset + 2, yPosition + 5);
       xOffset += colWidths[3];
       
-      pdf.text(data.iterationCost.toLocaleString(), xOffset + 2, yPosition + 5);
-      xOffset += colWidths[4];
-      
-      pdf.text(data.cumulativeCost.toLocaleString(), xOffset + 2, yPosition + 5);
-      xOffset += colWidths[5];
-      
       pdf.text(data.remainingBudget.toLocaleString(), xOffset + 2, yPosition + 5);
-      xOffset += colWidths[6];
+      xOffset += colWidths[4];
       
       pdf.text(`${data.budgetConsumed.toFixed(1)}%`, xOffset + 2, yPosition + 5);
       
