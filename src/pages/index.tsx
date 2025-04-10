@@ -350,7 +350,8 @@ export default function Home() {
             <h1 className="text-3xl font-bold">Budget Visualization Tool</h1>
             <SaveStateManager 
               currentState={getCurrentAppState()} 
-              onLoadState={handleLoadState} 
+              onLoadState={handleLoadState}
+              onGeneratePDF={handleGeneratePDF}
             />
           </div>
           
@@ -735,14 +736,7 @@ export default function Home() {
                         </ChartContainer>
                       </div>
                       
-                      <div className="flex justify-center mt-6">
-                        <Button 
-                          onClick={handleGeneratePDF}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          Generate PDF Report
-                        </Button>
-                      </div>
+
                     </>
                   ) : (
                     <Alert>

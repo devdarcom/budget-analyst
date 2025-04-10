@@ -9,9 +9,10 @@ import { saveState, getSavedStates, loadState, deleteState, SavedState, AppState
 interface SaveStateManagerProps {
   currentState: AppState;
   onLoadState: (state: AppState) => void;
+  onGeneratePDF: () => void;
 }
 
-export default function SaveStateManager({ currentState, onLoadState }: SaveStateManagerProps) {
+export default function SaveStateManager({ currentState, onLoadState, onGeneratePDF }: SaveStateManagerProps) {
   const [savedStates, setSavedStates] = useState<SavedState[]>([]);
   const [saveName, setSaveName] = useState('');
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -76,7 +77,15 @@ export default function SaveStateManager({ currentState, onLoadState }: SaveStat
   };
 
   return (
-    <div className="flex space-x-2">
+    <div className="flex flex-wrap gap-2">
+      {/* Generate PDF Button */}
+      <Button 
+        onClick={onGeneratePDF}
+        className="bg-primary hover:bg-primary/90"
+      >
+        Generate PDF Report
+      </Button>
+      
       {/* Save State Dialog */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogTrigger asChild>
@@ -194,6 +203,9 @@ export default function SaveStateManager({ currentState, onLoadState }: SaveStat
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setLoadDialogOpen(true)}>
               Load State
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onGeneratePDF}>
+              Generate PDF Report
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
