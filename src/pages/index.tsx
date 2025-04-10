@@ -627,7 +627,7 @@ export default function Home() {
                       <div className="h-[500px] w-full">
                         <ChartContainer
                           config={{
-                            iterationCost: { label: "Iteration Cost", color: "#e11d48" },
+                            iterationCost: { label: "Iteration Cost", color: "#4f46e5" },
                             cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
                             cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
                           }}
@@ -676,10 +676,10 @@ export default function Home() {
                               yAxisId="right"
                               type="monotone"
                               dataKey="iterationCost"
-                              stroke="#e11d48"
+                              stroke="#4f46e5"
                               strokeWidth={2}
-                              dot={{ r: 4, fill: "#e11d48" }}
-                              activeDot={{ r: 6, fill: "#e11d48" }}
+                              dot={{ r: 4, fill: "#4f46e5" }}
+                              activeDot={{ r: 6, fill: "#4f46e5" }}
                               name="Iteration Cost"
                             />
                             <Legend />
