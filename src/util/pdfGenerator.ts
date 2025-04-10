@@ -35,20 +35,8 @@ export async function generatePDFReport(
   pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 10;
   
-  // Add budget parameters section
-  pdf.setFontSize(16);
-  pdf.text('Budget Parameters', margin, yPosition);
-  yPosition += 8;
-  
-  pdf.setFontSize(12);
-  pdf.text(`Cost per Hour: ${budgetParams.currency}${budgetParams.costPerHour}`, margin, yPosition);
-  yPosition += 6;
-  pdf.text(`Total Budget Size: ${budgetParams.currency}${budgetParams.budgetSize.toLocaleString()}`, margin, yPosition);
-  yPosition += 6;
-  pdf.text(`Default Team Size: ${budgetParams.teamSize} people`, margin, yPosition);
-  yPosition += 6;
-  pdf.text(`Working Days per Iteration: ${budgetParams.workingDaysPerIteration} days`, margin, yPosition);
-  yPosition += 15;
+  // Budget Parameters section removed as requested
+  yPosition += 5;
   
   // Add chart visualization
   if (chartRef.current) {
@@ -92,35 +80,41 @@ export async function generatePDFReport(
     const badgeWidth = (pageWidth - (margin * 2)) / 3;
     const badgeHeight = 15;
     
-    // Badge 1: Total Budget
-    pdf.setFillColor(40, 40, 40);
+    // Badge 1: Total Budget - white filling with black border and black text
+    pdf.setFillColor(255, 255, 255); // White fill
     pdf.roundedRect(margin, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'F');
-    pdf.setTextColor(255, 255, 255);
+    pdf.setDrawColor(0, 0, 0); // Black border
+    pdf.roundedRect(margin, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'S');
+    pdf.setTextColor(0, 0, 0); // Black text
     pdf.setFontSize(8);
     pdf.text('TOTAL BUDGET', margin + (badgeWidth - 2) / 2, yPosition + 4, { align: 'center' });
     pdf.setFontSize(10);
     pdf.text(`${budgetParams.currency}${formatNumberWithSuffix(budgetParams.budgetSize)}`, margin + (badgeWidth - 2) / 2, yPosition + 11, { align: 'center' });
     
-    // Badge 2: Consumed Budget
-    pdf.setFillColor(40, 40, 40);
+    // Badge 2: Consumed Budget - white filling with black border and black text
+    pdf.setFillColor(255, 255, 255); // White fill
     pdf.roundedRect(margin + badgeWidth, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'F');
-    pdf.setTextColor(255, 255, 255);
+    pdf.setDrawColor(0, 0, 0); // Black border
+    pdf.roundedRect(margin + badgeWidth, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'S');
+    pdf.setTextColor(0, 0, 0); // Black text
     pdf.setFontSize(8);
     pdf.text('CONSUMED BUDGET', margin + badgeWidth + (badgeWidth - 2) / 2, yPosition + 4, { align: 'center' });
     pdf.setFontSize(10);
     pdf.text(`${budgetParams.currency}${formatNumberWithSuffix(cumulativeCost)} (${budgetConsumptionPercentage.toFixed(1)}%)`, margin + badgeWidth + (badgeWidth - 2) / 2, yPosition + 11, { align: 'center' });
     
-    // Badge 3: Remaining Budget
-    pdf.setFillColor(40, 40, 40);
+    // Badge 3: Remaining Budget - white filling with black border and black text
+    pdf.setFillColor(255, 255, 255); // White fill
     pdf.roundedRect(margin + badgeWidth * 2, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'F');
-    pdf.setTextColor(255, 255, 255);
+    pdf.setDrawColor(0, 0, 0); // Black border
+    pdf.roundedRect(margin + badgeWidth * 2, yPosition, badgeWidth - 2, badgeHeight, 2, 2, 'S');
+    pdf.setTextColor(0, 0, 0); // Black text
     pdf.setFontSize(8);
     pdf.text('REMAINING BUDGET', margin + badgeWidth * 2 + (badgeWidth - 2) / 2, yPosition + 4, { align: 'center' });
     pdf.setFontSize(10);
     pdf.text(`${budgetParams.currency}${formatNumberWithSuffix(remainingBudget)}`, margin + badgeWidth * 2 + (badgeWidth - 2) / 2, yPosition + 11, { align: 'center' });
     
-    // Reset text color
-    pdf.setTextColor(0, 0, 0);
+    // Reset draw color
+    pdf.setDrawColor(0, 0, 0);
     yPosition += badgeHeight + 5;
     
     try {
