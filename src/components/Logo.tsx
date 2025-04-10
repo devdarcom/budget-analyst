@@ -5,7 +5,7 @@ const Logo: React.FC = () => {
   return (
     <div className="relative h-10 w-auto">
       <Image 
-        src="https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/simplified-logo-on-black-3d2d74c.svg" 
+        src="https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/fully-transparent-logo-0e7b719.svg" 
         alt="Budget Visualization Logo" 
         width={120} 
         height={40} 

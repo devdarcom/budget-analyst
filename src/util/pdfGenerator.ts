@@ -28,7 +28,7 @@ export async function generatePDFReport(
   // Add logo
   // Using a PNG version of the logo for better compatibility with jsPDF
   // We're using the same URL but jsPDF will handle it better as a PNG
-  const logoUrl = 'https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/simplified-logo-on-black-3d2d74c.svg';
+  const logoUrl = 'https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/fully-transparent-logo-0e7b719.svg';
   
   // Function to load an image and convert to base64
   const loadImage = (url: string): Promise<HTMLImageElement> => {
