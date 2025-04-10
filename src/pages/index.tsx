@@ -638,11 +638,12 @@ export default function Home() {
                             margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
+                            <XAxis dataKey="name" allowDataOverflow={false} />
                             {/* Primary Y-axis for cumulative costs */}
                             <YAxis 
                               yAxisId="right"
                               orientation="right"
+                              domain={[0, 'auto']}
                               label={{ value: "Cumulative Cost ($)", angle: -90, position: 'insideRight' }}
                             />
                             {/* Secondary Y-axis for individual iteration costs */}
