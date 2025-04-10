@@ -628,6 +628,7 @@ export default function Home() {
                         <ChartContainer
                           config={{
                             iterationCost: { label: "Iteration Cost", color: "#4f46e5" },
+                            individualCost: { label: "Individual Cost", color: "#4f46e5" },
                             cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
                             cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
                           }}
@@ -681,6 +682,15 @@ export default function Home() {
                               dot={{ r: 4, fill: "#4f46e5" }}
                               activeDot={{ r: 6, fill: "#4f46e5" }}
                               name="Iteration Cost"
+                            />
+                            {/* Blue bars for individual iteration costs */}
+                            <Bar
+                              yAxisId="right"
+                              dataKey="iterationCost"
+                              fill="#4f46e5"
+                              fillOpacity={0.6}
+                              name="Individual Cost"
+                              barSize={20}
                             />
                             <Legend />
                           </AreaChart>
