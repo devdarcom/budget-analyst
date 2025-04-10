@@ -61,10 +61,34 @@ export default function Home() {
         [name]: value
       }));
     } else {
-      setBudgetParams(prev => ({
-        ...prev,
-        [name]: parseFloat(value) || 0
-      }));
+      setBudgetParams(prev => {
+        const updatedParams = {
+          ...prev,
+          [name]: parseFloat(value) || 0
+        };
+        
+        // After updating budget parameters, check if we need to adjust iterations
+        // to ensure they reach 100% of the budget, but only if we already have iterations
+        setTimeout(() => {
+          if (iterations.length > 0) {
+            const updatedIterations = ensureActualCumulativeCrossesTotalBudget();
+            if (updatedIterations.length > iterations.length) {
+              setIterations(updatedIterations);
+              
+              // Update the next iteration number for manual additions
+              const maxIterationNumber = Math.max(...updatedIterations.map(it => it.iterationNumber));
+              setNewIteration(prev => ({
+                ...prev,
+                iterationNumber: maxIterationNumber + 1
+              }));
+              
+              toast.success(`Added ${updatedIterations.length - iterations.length} iterations to reach total budget`);
+            }
+          }
+        }, 0);
+        
+        return updatedParams;
+      });
     }
     
     // Reset pre-filled flag to allow regeneration of iterations with new parameters
@@ -625,6 +649,10 @@ export default function Home() {
                   <CardDescription>
                     Iterations are pre-filled based on initial parameters up to 100% budget consumption.
                     You can add, regenerate, or import custom iterations. The table below is editable - click on any Days or Team Size value to modify it.
+                    <p className="mt-2 font-medium">
+                      <span className="text-primary">Total Hours</span> can be calculated automatically from Days and Team Size (8 hours per day), 
+                      but can also be manually overridden for more precise control.
+                    </p>
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -663,7 +691,7 @@ export default function Home() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="totalHours">Total Hours</Label>
+                      <Label htmlFor="totalHours" className="text-primary font-bold">Total Hours</Label>
                       <Input
                         id="totalHours"
                         name="totalHours"
@@ -672,6 +700,7 @@ export default function Home() {
                         onChange={handleIterationChange}
                         min="1"
                         placeholder={`Default: ${newIteration.iterationDays * newIteration.teamSize * 8}`}
+                        className="border-primary focus:ring-primary"
                       />
                     </div>
                   </div>
@@ -732,7 +761,7 @@ export default function Home() {
                             <TableHead>Iteration #</TableHead>
                             <TableHead>Days</TableHead>
                             <TableHead>Team Size</TableHead>
-                            <TableHead>Total Hours</TableHead>
+                            <TableHead className="text-primary font-bold">Total Hours</TableHead>
                             <TableHead className="text-right">Est. Cost ({budgetParams.currency})</TableHead>
                             <TableHead className="text-center">Current</TableHead>
                           </TableRow>
@@ -818,7 +847,7 @@ export default function Home() {
                                       className="h-8 w-20 transition-colors hover:border-primary focus:border-primary"
                                     />
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="text-primary">
                                     <Input
                                       type="number"
                                       min="1"
@@ -842,7 +871,7 @@ export default function Home() {
                                           toast.success(`Updated total hours for iteration ${iteration.iterationNumber}`);
                                         }
                                       }}
-                                      className="h-8 w-20 transition-colors hover:border-primary focus:border-primary"
+                                      className="h-8 w-20 transition-colors border-primary hover:border-primary focus:border-primary"
                                     />
                                   </TableCell>
                                   <TableCell className="text-right">{cost.toLocaleString()}</TableCell>
