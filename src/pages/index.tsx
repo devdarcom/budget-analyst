@@ -29,8 +29,7 @@ interface IterationData {
 
 interface ChartData {
   name: string;
-  iterationCost: number;
-  iterationCost2: number; // Added for iteration costs
+  iterationCost: number; // Iteration costs
   cumulativeStandard: number;
   cumulativeActual: number;
 }
@@ -193,13 +192,8 @@ export default function Home() {
     let cumulativeActual = 0;
     
     const data: ChartData[] = sortedIterations.map(iteration => {
-      // Calculate interaction cost (original iterationCost)
+      // Calculate the cost for this iteration
       const iterationCost = costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
-      
-      // Calculate the cost for this specific iteration
-      // Using a slightly different calculation to make it visually distinct
-      // This represents the pure iteration cost without any adjustments
-      const iterationCost2 = costPerHour * 8 * iteration.teamSize * iteration.iterationDays * 0.9;
       
       cumulativeStandard += standardIterationCost;
       cumulativeActual += iterationCost;
@@ -207,7 +201,6 @@ export default function Home() {
       return {
         name: `Iteration ${iteration.iterationNumber}`,
         iterationCost,
-        iterationCost2,
         cumulativeStandard,
         cumulativeActual
       };
@@ -594,7 +587,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle>Budget Visualization</CardTitle>
                   <CardDescription>
-                    Visualize your budget consumption across iterations. The chart shows cumulative costs (left axis) and individual costs (right axis) in a single view. The dashed red line represents the iteration costs, while the solid blue line shows interaction costs.
+                    Visualize your budget consumption across iterations. The chart shows cumulative costs (left axis) and individual iteration costs (right axis) in a single view.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -634,8 +627,7 @@ export default function Home() {
                       <div className="h-[500px] w-full">
                         <ChartContainer
                           config={{
-                            iterationCost: { label: "Interaction Cost", color: "#4f46e5" },
-                            iterationCost2: { label: "Iteration Cost", color: "#e11d48" },
+                            iterationCost: { label: "Iteration Cost", color: "#e11d48" },
                             cumulativeStandard: { label: "Standard Cumulative", color: "#10b981" },
                             cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
                           }}
@@ -679,27 +671,15 @@ export default function Home() {
                               strokeWidth={2}
                               name="Actual Cumulative"
                             />
-                            {/* Line for interaction costs with dots */}
-                            <Line
-                              yAxisId="right"
-                              type="monotone"
-                              dataKey="iterationCost"
-                              stroke="#4f46e5"
-                              strokeWidth={2}
-                              dot={{ r: 4, fill: "#4f46e5" }}
-                              activeDot={{ r: 6, fill: "#4f46e5" }}
-                              name="Interaction Cost"
-                            />
                             {/* Line for iteration costs with dots */}
                             <Line
                               yAxisId="right"
                               type="monotone"
-                              dataKey="iterationCost2"
+                              dataKey="iterationCost"
                               stroke="#e11d48"
                               strokeWidth={2}
                               dot={{ r: 4, fill: "#e11d48" }}
                               activeDot={{ r: 6, fill: "#e11d48" }}
-                              strokeDasharray="5 5"
                               name="Iteration Cost"
                             />
                             <Legend />
