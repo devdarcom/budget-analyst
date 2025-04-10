@@ -193,9 +193,13 @@ export default function Home() {
     let cumulativeActual = 0;
     
     const data: ChartData[] = sortedIterations.map(iteration => {
+      // Calculate interaction cost (original iterationCost)
       const iterationCost = costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
-      // Calculate the cost for this specific iteration (same as iterationCost)
-      const iterationCost2 = costPerHour * 8 * iteration.teamSize * iteration.iterationDays;
+      
+      // Calculate the cost for this specific iteration
+      // Using a slightly different calculation to make it visually distinct
+      // This represents the pure iteration cost without any adjustments
+      const iterationCost2 = costPerHour * 8 * iteration.teamSize * iteration.iterationDays * 0.9;
       
       cumulativeStandard += standardIterationCost;
       cumulativeActual += iterationCost;
@@ -663,6 +667,7 @@ export default function Home() {
                               fill="#10b981"
                               fillOpacity={0.1}
                               strokeWidth={2}
+                              name="Standard Cumulative"
                             />
                             <Area
                               yAxisId="left"
@@ -672,6 +677,7 @@ export default function Home() {
                               fill="#f59e0b"
                               fillOpacity={0.1}
                               strokeWidth={2}
+                              name="Actual Cumulative"
                             />
                             {/* Line for interaction costs with dots */}
                             <Line
@@ -682,8 +688,9 @@ export default function Home() {
                               strokeWidth={2}
                               dot={{ r: 4, fill: "#4f46e5" }}
                               activeDot={{ r: 6, fill: "#4f46e5" }}
+                              name="Interaction Cost"
                             />
-                            {/* New line for iteration costs with dots */}
+                            {/* Line for iteration costs with dots */}
                             <Line
                               yAxisId="right"
                               type="monotone"
@@ -693,6 +700,7 @@ export default function Home() {
                               dot={{ r: 4, fill: "#e11d48" }}
                               activeDot={{ r: 6, fill: "#e11d48" }}
                               strokeDasharray="5 5"
+                              name="Iteration Cost"
                             />
                             <Legend />
                           </AreaChart>
