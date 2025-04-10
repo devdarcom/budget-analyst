@@ -1,8 +1,18 @@
 import React from 'react';
+import Image from 'next/image';
 
 const Logo: React.FC = () => {
   return (
-    <div className="text-xl font-bold">Logo</div>
+    <div className="relative h-10 w-auto">
+      <Image 
+        src="https://assets.co.dev/aff91ec6-0d31-4a32-ad90-44b87fbbf8dc/image-06cb179.png" 
+        alt="Budget Visualization Logo" 
+        width={120} 
+        height={40} 
+        className="object-contain" 
+        priority
+      />
+    </div>
   );
 };
 
