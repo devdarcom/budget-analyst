@@ -232,11 +232,12 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // First close the load dialog to prevent focus issues
+                            // Set the selected state first
+                            setSelectedState(state);
+                            // Then close the load dialog
                             setLoadDialogOpen(false);
                             // Use setTimeout to ensure the load dialog is closed before opening delete dialog
                             setTimeout(() => {
-                              setSelectedState(state);
                               setDeleteDialogOpen(true);
                             }, 100);
                           }}

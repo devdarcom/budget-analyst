@@ -139,28 +139,36 @@ export const loadState = async (id: string, userId?: string): Promise<AppState |
 
 // Delete a saved state by ID
 export const deleteState = async (id: string, userId?: string): Promise<boolean> => {
-  const savedStates = await getSavedStates();
-  const filteredStates = savedStates.filter(state => state.id !== id);
-  
-  if (filteredStates.length === savedStates.length) {
-    return false; // No state was deleted
-  }
-  
   try {
+    // Get current saved states
+    const savedStates = await getSavedStates();
+    const filteredStates = savedStates.filter(state => state.id !== id);
+    
+    // Update local storage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredStates));
     
     // If userId is provided, also delete from database
     if (userId) {
+      console.log(`Attempting to delete state ${id} for user ${userId} from database`);
       try {
         const response = await fetch(`/api/states/delete?id=${id}&userId=${userId}`, {
           method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
         
         if (!response.ok) {
-          console.error('Failed to delete state from database:', await response.text());
+          const errorText = await response.text();
+          console.error('Failed to delete state from database:', errorText);
+          return false;
         }
+        
+        const result = await response.json();
+        console.log('Delete state API response:', result);
       } catch (dbError) {
         console.error('Error deleting state from database:', dbError);
+        return false;
       }
     }
     
