@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { saveState, getSavedStates, loadState, deleteState, SavedState, AppState } from '@/util/stateManager';
+import { saveState, getSavedStates, loadState, deleteState, cleanupDatabase, SavedState, AppState } from '@/util/stateManager';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SaveStateManagerProps {
@@ -21,6 +21,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const [selectedState, setSelectedState] = useState<SavedState | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load saved states from local storage and database
@@ -88,21 +89,53 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
   // Handle deleting a saved state
   const handleDeleteState = async () => {
     if (!selectedState) return;
-
+    
+    // Store the ID before deletion to filter the array later
+    const stateIdToDelete = selectedState.id;
+    
     setIsLoading(true);
     try {
-      const success = await deleteState(selectedState.id, user?.id);
+      const success = await deleteState(stateIdToDelete, user?.id);
       if (success) {
-        setSavedStates(savedStates.filter(state => state.id !== selectedState.id));
+        // Close the dialog first to prevent focus issues
         setDeleteDialogOpen(false);
-        setSelectedState(null);
-        toast.success('State deleted successfully');
+        
+        // Use setTimeout to ensure the dialog is fully closed before updating state
+        setTimeout(() => {
+          setSavedStates(prev => prev.filter(state => state.id !== stateIdToDelete));
+          setSelectedState(null);
+          toast.success('State deleted successfully');
+        }, 100);
       } else {
         toast.error('Failed to delete state');
       }
     } catch (error) {
       console.error('Error deleting state:', error);
       toast.error('Failed to delete state');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle database cleanup (remove states older than 30 days)
+  const handleDatabaseCleanup = async () => {
+    setIsLoading(true);
+    try {
+      const result = await cleanupDatabase();
+      if (result.success) {
+        setCleanupDialogOpen(false);
+        
+        // Refresh the saved states list
+        const states = await getSavedStates(user?.id);
+        setSavedStates(states);
+        
+        toast.success(`Database cleaned up successfully. Removed ${result.count} old states.`);
+      } else {
+        toast.error('Failed to clean up database');
+      }
+    } catch (error) {
+      console.error('Error cleaning up database:', error);
+      toast.error('Failed to clean up database');
     } finally {
       setIsLoading(false);
     }
@@ -196,8 +229,13 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedState(state);
-                            setDeleteDialogOpen(true);
+                            // First close the load dialog to prevent focus issues
+                            setLoadDialogOpen(false);
+                            // Use setTimeout to ensure the load dialog is closed before opening delete dialog
+                            setTimeout(() => {
+                              setSelectedState(state);
+                              setDeleteDialogOpen(true);
+                            }, 100);
                           }}
                           disabled={isLoading}
                         >
@@ -221,7 +259,20 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
           </Dialog>
 
           {/* Delete Confirmation Dialog */}
-          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <Dialog 
+            open={deleteDialogOpen} 
+            onOpenChange={(open) => {
+              setDeleteDialogOpen(open);
+              // If dialog is closing and we're not in the middle of an operation,
+              // ensure we reset the selected state to avoid focus issues
+              if (!open && !isLoading) {
+                // Use setTimeout to ensure this happens after the dialog closing animation
+                setTimeout(() => {
+                  setSelectedState(null);
+                }, 100);
+              }
+            }}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Delete Saved State</DialogTitle>
@@ -240,6 +291,38 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
             </DialogContent>
           </Dialog>
 
+          {/* Database Cleanup Dialog */}
+          <Dialog open={cleanupDialogOpen} onOpenChange={setCleanupDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Clean Up Database</DialogTitle>
+                <DialogDescription>
+                  This will remove all saved states older than 30 days from the database. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCleanupDialogOpen(false)} disabled={isLoading}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDatabaseCleanup} disabled={isLoading}>
+                  {isLoading ? 'Cleaning...' : 'Clean Up Database'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Admin Cleanup Button - Only visible for admin users */}
+          {user?.email === 'admin@example.com' && (
+            <Button 
+              variant="outline" 
+              onClick={() => setCleanupDialogOpen(true)} 
+              disabled={isLoading}
+              className="ml-auto"
+            >
+              Clean Up Database
+            </Button>
+          )}
+
           {/* Mobile-friendly dropdown for smaller screens */}
           <div className="block md:hidden">
             <DropdownMenu>
@@ -256,6 +339,11 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                 <DropdownMenuItem onClick={onGeneratePDF} disabled={isLoading}>
                   Generate PDF Report
                 </DropdownMenuItem>
+                {user?.email === 'admin@example.com' && (
+                  <DropdownMenuItem onClick={() => setCleanupDialogOpen(true)} disabled={isLoading}>
+                    Clean Up Database
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

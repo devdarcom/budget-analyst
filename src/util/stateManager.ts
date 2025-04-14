@@ -170,3 +170,26 @@ export const deleteState = async (id: string, userId?: string): Promise<boolean>
     return false;
   }
 };
+
+// Clean up old saved states from the database (states older than 30 days)
+export const cleanupDatabase = async (): Promise<{ success: boolean, count: number }> => {
+  try {
+    const response = await fetch('/api/states/cleanup', {
+      method: 'POST',
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      return { 
+        success: true, 
+        count: result.count || 0 
+      };
+    } else {
+      console.error('Failed to clean up database:', await response.text());
+      return { success: false, count: 0 };
+    }
+  } catch (error) {
+    console.error('Error cleaning up database:', error);
+    return { success: false, count: 0 };
+  }
+};
