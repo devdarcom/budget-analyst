@@ -312,7 +312,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
           </Dialog>
 
           {/* Admin Cleanup Button - Only visible for admin users */}
-          {user?.email === 'admin@example.com' && (
+          {user?.id === 'IziDrop' && (
             <Button 
               variant="outline" 
               onClick={() => setCleanupDialogOpen(true)} 
@@ -339,7 +339,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                 <DropdownMenuItem onClick={onGeneratePDF} disabled={isLoading}>
                   Generate PDF Report
                 </DropdownMenuItem>
-                {user?.email === 'admin@example.com' && (
+                {user?.id === 'IziDrop' && (
                   <DropdownMenuItem onClick={() => setCleanupDialogOpen(true)} disabled={isLoading}>
                     Clean Up Database
                   </DropdownMenuItem>
