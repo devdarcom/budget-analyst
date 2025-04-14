@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { saveState, getSavedStates, loadState, deleteState, SavedState, AppState } from '@/util/stateManager';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SaveStateManagerProps {
   currentState: AppState;
@@ -13,6 +14,7 @@ interface SaveStateManagerProps {
 }
 
 export default function SaveStateManager({ currentState, onLoadState, onGeneratePDF }: SaveStateManagerProps) {
+  const { isAuthenticated } = useAuth();
   const [savedStates, setSavedStates] = useState<SavedState[]>([]);
   const [saveName, setSaveName] = useState('');
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -22,8 +24,10 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
 
   // Load saved states from local storage
   useEffect(() => {
-    setSavedStates(getSavedStates());
-  }, []);
+    if (isAuthenticated) {
+      setSavedStates(getSavedStates());
+    }
+  }, [isAuthenticated]);
 
   // Handle saving current state
   const handleSaveState = () => {
@@ -78,7 +82,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
 
   return (
     <div className="flex flex-wrap gap-2">
-      {/* Generate PDF Button */}
+      {/* Generate PDF Button - Always visible */}
       <Button 
         onClick={onGeneratePDF}
         className="bg-primary hover:bg-primary/90"
@@ -86,130 +90,135 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
         Generate PDF Report
       </Button>
       
-      {/* Save State Dialog */}
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline">Save State</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save Current State</DialogTitle>
-            <DialogDescription>
-              Save the current budget parameters, iterations, and visualization for later use.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <label htmlFor="save-name" className="text-sm font-medium block mb-2">
-              Save Name
-            </label>
-            <Input
-              id="save-name"
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              placeholder="My Budget Scenario"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveState}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Load State Dialog */}
-      <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline">Load State</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Load Saved State</DialogTitle>
-            <DialogDescription>
-              Select a previously saved state to load.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 max-h-[400px] overflow-y-auto">
-            {savedStates.length > 0 ? (
-              <div className="space-y-2">
-                {savedStates.map((state) => (
-                  <div
-                    key={state.id}
-                    className="p-3 border rounded-md flex justify-between items-center hover:bg-accent cursor-pointer"
-                    onClick={() => handleLoadState(state.id)}
-                  >
-                    <div>
-                      <h4 className="font-medium">{state.name}</h4>
-                      <p className="text-sm text-muted-foreground">{formatDate(state.date)}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedState(state);
-                        setDeleteDialogOpen(true);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                ))}
+      {/* Save/Load State functionality - Only visible when authenticated */}
+      {isAuthenticated && (
+        <>
+          {/* Save State Dialog */}
+          <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Save State</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save Current State</DialogTitle>
+                <DialogDescription>
+                  Save the current budget parameters, iterations, and visualization for later use.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <label htmlFor="save-name" className="text-sm font-medium block mb-2">
+                  Save Name
+                </label>
+                <Input
+                  id="save-name"
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  placeholder="My Budget Scenario"
+                />
               </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-4">
-                No saved states found.
-              </p>
-            )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveState}>Save</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Load State Dialog */}
+          <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Load State</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Load Saved State</DialogTitle>
+                <DialogDescription>
+                  Select a previously saved state to load.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 max-h-[400px] overflow-y-auto">
+                {savedStates.length > 0 ? (
+                  <div className="space-y-2">
+                    {savedStates.map((state) => (
+                      <div
+                        key={state.id}
+                        className="p-3 border rounded-md flex justify-between items-center hover:bg-accent cursor-pointer"
+                        onClick={() => handleLoadState(state.id)}
+                      >
+                        <div>
+                          <h4 className="font-medium">{state.name}</h4>
+                          <p className="text-sm text-muted-foreground">{formatDate(state.date)}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedState(state);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-4">
+                    No saved states found.
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setLoadDialogOpen(false)}>
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Saved State</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete "{selectedState?.name}"? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteState}>
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Mobile-friendly dropdown for smaller screens */}
+          <div className="block md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">Manage States</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setSaveDialogOpen(true)}>
+                  Save State
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLoadDialogOpen(true)}>
+                  Load State
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onGeneratePDF}>
+                  Generate PDF Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLoadDialogOpen(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Saved State</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{selectedState?.name}"? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteState}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mobile-friendly dropdown for smaller screens */}
-      <div className="block md:hidden">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">Manage States</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setSaveDialogOpen(true)}>
-              Save State
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setLoadDialogOpen(true)}>
-              Load State
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onGeneratePDF}>
-              Generate PDF Report
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+        </>
+      )}
     </div>
   );
 }
