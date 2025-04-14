@@ -125,6 +125,7 @@ export async function generatePDFReport(
         useCORS: true,
         height: chartRef.current.scrollHeight, // Ensure full height is captured
         width: chartRef.current.scrollWidth, // Ensure full width is captured
+        windowHeight: chartRef.current.scrollHeight + 100, // Add extra space to ensure all content is captured
       });
       
       const imgData = canvas.toDataURL('image/png');
