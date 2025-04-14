@@ -118,7 +118,14 @@ export async function generatePDFReport(
     yPosition += badgeHeight + 5;
     
     try {
-      // Capture the chart as an image
+      // Temporarily remove any border from the chart element
+      let originalBorder = '';
+      if (chartRef.current) {
+        originalBorder = chartRef.current.style.border;
+        chartRef.current.style.border = 'none';
+      }
+      
+      // Capture the chart as an image without border
       const canvas = await html2canvas(chartRef.current, {
         scale: 2, // Higher scale for better quality
         logging: false,
@@ -126,7 +133,13 @@ export async function generatePDFReport(
         height: chartRef.current.scrollHeight, // Ensure full height is captured
         width: chartRef.current.scrollWidth, // Ensure full width is captured
         windowHeight: chartRef.current.scrollHeight + 100, // Add extra space to ensure all content is captured
+        backgroundColor: null, // Transparent background
       });
+      
+      // Restore original border style
+      if (chartRef.current) {
+        chartRef.current.style.border = originalBorder;
+      }
       
       const imgData = canvas.toDataURL('image/png');
       const imgWidth = pageWidth - (margin * 2);
@@ -141,8 +154,12 @@ export async function generatePDFReport(
         yPosition = margin;
       }
       
-      // Add the chart image to the PDF with proper scaling
+      // Add the chart image to the PDF with proper scaling - without a frame/border
       pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
+      
+      // Ensure no border is drawn around the image
+      pdf.setDrawColor(255, 255, 255); // White color (same as background)
+      pdf.setLineWidth(0); // Set line width to 0
       yPosition += imgHeight + 15;
     } catch (error) {
       console.error('Error capturing chart:', error);

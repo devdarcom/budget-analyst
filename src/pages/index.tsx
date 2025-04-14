@@ -1075,7 +1075,7 @@ export default function Home() {
                           </ToggleGroup>
                         </div>
                         
-                        <div className="h-auto min-h-[500px] w-full overflow-visible border rounded-md p-4" ref={chartRef}>
+                        <div className="h-auto min-h-[500px] w-full overflow-visible p-4" ref={chartRef}>
                           <ChartContainer
                             config={{
                               individualCost: { label: "Individual Cost", color: "#4f46e5" },
