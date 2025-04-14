@@ -21,7 +21,6 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const [selectedState, setSelectedState] = useState<SavedState | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load saved states from local storage and database
@@ -30,6 +29,14 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
       const fetchSavedStates = async () => {
         setIsLoading(true);
         try {
+          // Run database cleanup once (as requested by user)
+          try {
+            await cleanupDatabase();
+            console.log('Database cleanup completed');
+          } catch (cleanupError) {
+            console.error('Error during database cleanup:', cleanupError);
+          }
+          
           const states = await getSavedStates(user?.id);
           setSavedStates(states);
         } catch (error) {
@@ -117,34 +124,30 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
     }
   };
   
-  // Handle database cleanup (remove states older than 30 days)
-  const handleDatabaseCleanup = async () => {
-    setIsLoading(true);
-    try {
-      const result = await cleanupDatabase();
-      if (result.success) {
-        setCleanupDialogOpen(false);
-        
-        // Refresh the saved states list
-        const states = await getSavedStates(user?.id);
-        setSavedStates(states);
-        
-        toast.success(`Database cleaned up successfully. Removed ${result.count} old states.`);
-      } else {
-        toast.error('Failed to clean up database');
-      }
-    } catch (error) {
-      console.error('Error cleaning up database:', error);
-      toast.error('Failed to clean up database');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    try {
+      // Check if the date string is valid
+      if (!dateString || dateString === 'Z') {
+        return 'Invalid date';
+      }
+      
+      // Ensure the date string is properly formatted
+      const date = new Date(dateString);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      
+      // Format the date using toLocaleString
+      return date.toLocaleString();
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
   };
 
   return (
@@ -291,37 +294,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
             </DialogContent>
           </Dialog>
 
-          {/* Database Cleanup Dialog */}
-          <Dialog open={cleanupDialogOpen} onOpenChange={setCleanupDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Clean Up Database</DialogTitle>
-                <DialogDescription>
-                  This will remove all saved states older than 30 days from the database. This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setCleanupDialogOpen(false)} disabled={isLoading}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDatabaseCleanup} disabled={isLoading}>
-                  {isLoading ? 'Cleaning...' : 'Clean Up Database'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
 
-          {/* Admin Cleanup Button - Only visible for admin users */}
-          {user?.id === 'IziDrop' && (
-            <Button 
-              variant="outline" 
-              onClick={() => setCleanupDialogOpen(true)} 
-              disabled={isLoading}
-              className="ml-auto"
-            >
-              Clean Up Database
-            </Button>
-          )}
 
           {/* Mobile-friendly dropdown for smaller screens */}
           <div className="block md:hidden">
@@ -339,11 +312,6 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                 <DropdownMenuItem onClick={onGeneratePDF} disabled={isLoading}>
                   Generate PDF Report
                 </DropdownMenuItem>
-                {user?.id === 'IziDrop' && (
-                  <DropdownMenuItem onClick={() => setCleanupDialogOpen(true)} disabled={isLoading}>
-                    Clean Up Database
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
