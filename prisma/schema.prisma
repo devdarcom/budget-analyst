@@ -13,3 +13,13 @@ model Example {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
 }
+
+model SavedState {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  date      DateTime @default(now())
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

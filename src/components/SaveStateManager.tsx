@@ -14,63 +14,97 @@ interface SaveStateManagerProps {
 }
 
 export default function SaveStateManager({ currentState, onLoadState, onGeneratePDF }: SaveStateManagerProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [savedStates, setSavedStates] = useState<SavedState[]>([]);
   const [saveName, setSaveName] = useState('');
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const [selectedState, setSelectedState] = useState<SavedState | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Load saved states from local storage
+  // Load saved states from local storage and database
   useEffect(() => {
     if (isAuthenticated) {
-      setSavedStates(getSavedStates());
+      const fetchSavedStates = async () => {
+        setIsLoading(true);
+        try {
+          const states = await getSavedStates(user?.id);
+          setSavedStates(states);
+        } catch (error) {
+          console.error('Error fetching saved states:', error);
+          toast.error('Failed to load saved states');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchSavedStates();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   // Handle saving current state
-  const handleSaveState = () => {
+  const handleSaveState = async () => {
     if (!saveName.trim()) {
       toast.error('Please enter a name for this save');
       return;
     }
 
+    setIsLoading(true);
     try {
-      const newState = saveState(saveName, currentState);
-      setSavedStates([...savedStates, newState]);
+      const newState = await saveState(saveName, currentState, user?.id);
+      setSavedStates(prev => [...prev, newState]);
       setSaveName('');
       setSaveDialogOpen(false);
       toast.success('State saved successfully');
     } catch (error) {
+      console.error('Error saving state:', error);
       toast.error('Failed to save state');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Handle loading a saved state
-  const handleLoadState = (id: string) => {
-    const state = loadState(id);
-    if (state) {
-      onLoadState(state);
-      setLoadDialogOpen(false);
-      toast.success('State loaded successfully');
-    } else {
+  const handleLoadState = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const state = await loadState(id, user?.id);
+      if (state) {
+        onLoadState(state);
+        setLoadDialogOpen(false);
+        toast.success('State loaded successfully');
+      } else {
+        toast.error('Failed to load state');
+      }
+    } catch (error) {
+      console.error('Error loading state:', error);
       toast.error('Failed to load state');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Handle deleting a saved state
-  const handleDeleteState = () => {
+  const handleDeleteState = async () => {
     if (!selectedState) return;
 
-    const success = deleteState(selectedState.id);
-    if (success) {
-      setSavedStates(savedStates.filter(state => state.id !== selectedState.id));
-      setDeleteDialogOpen(false);
-      setSelectedState(null);
-      toast.success('State deleted successfully');
-    } else {
+    setIsLoading(true);
+    try {
+      const success = await deleteState(selectedState.id, user?.id);
+      if (success) {
+        setSavedStates(savedStates.filter(state => state.id !== selectedState.id));
+        setDeleteDialogOpen(false);
+        setSelectedState(null);
+        toast.success('State deleted successfully');
+      } else {
+        toast.error('Failed to delete state');
+      }
+    } catch (error) {
+      console.error('Error deleting state:', error);
       toast.error('Failed to delete state');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -96,7 +130,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
           {/* Save State Dialog */}
           <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">Save State</Button>
+              <Button variant="outline" disabled={isLoading}>Save State</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -114,13 +148,16 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   placeholder="My Budget Scenario"
+                  disabled={isLoading}
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setSaveDialogOpen(false)} disabled={isLoading}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveState}>Save</Button>
+                <Button onClick={handleSaveState} disabled={isLoading}>
+                  {isLoading ? 'Saving...' : 'Save'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -128,7 +165,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
           {/* Load State Dialog */}
           <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">Load State</Button>
+              <Button variant="outline" disabled={isLoading}>Load State</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -138,7 +175,11 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4 max-h-[400px] overflow-y-auto">
-                {savedStates.length > 0 ? (
+                {isLoading ? (
+                  <p className="text-center text-muted-foreground py-4">
+                    Loading saved states...
+                  </p>
+                ) : savedStates.length > 0 ? (
                   <div className="space-y-2">
                     {savedStates.map((state) => (
                       <div
@@ -158,6 +199,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                             setSelectedState(state);
                             setDeleteDialogOpen(true);
                           }}
+                          disabled={isLoading}
                         >
                           Delete
                         </Button>
@@ -171,7 +213,7 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                 )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setLoadDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setLoadDialogOpen(false)} disabled={isLoading}>
                   Cancel
                 </Button>
               </DialogFooter>
@@ -188,11 +230,11 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isLoading}>
                   Cancel
                 </Button>
-                <Button variant="destructive" onClick={handleDeleteState}>
-                  Delete
+                <Button variant="destructive" onClick={handleDeleteState} disabled={isLoading}>
+                  {isLoading ? 'Deleting...' : 'Delete'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -202,16 +244,16 @@ export default function SaveStateManager({ currentState, onLoadState, onGenerate
           <div className="block md:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">Manage States</Button>
+                <Button variant="outline" disabled={isLoading}>Manage States</Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setSaveDialogOpen(true)}>
+                <DropdownMenuItem onClick={() => setSaveDialogOpen(true)} disabled={isLoading}>
                   Save State
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLoadDialogOpen(true)}>
+                <DropdownMenuItem onClick={() => setLoadDialogOpen(true)} disabled={isLoading}>
                   Load State
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onGeneratePDF}>
+                <DropdownMenuItem onClick={onGeneratePDF} disabled={isLoading}>
                   Generate PDF Report
                 </DropdownMenuItem>
               </DropdownMenuContent>

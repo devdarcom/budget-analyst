@@ -1075,7 +1075,7 @@ export default function Home() {
                           </ToggleGroup>
                         </div>
                         
-                        <div className="h-[500px] w-full" ref={chartRef}>
+                        <div className="h-[500px] w-full overflow-hidden border rounded-md p-4" ref={chartRef}>
                           <ChartContainer
                             config={{
                               individualCost: { label: "Individual Cost", color: "#4f46e5" },
@@ -1083,10 +1083,11 @@ export default function Home() {
                               cumulativeActual: { label: "Actual Cumulative", color: "#f59e0b" },
                             }}
                           >
-                            <ComposedChart
-                              data={chartData}
-                              margin={{ top: 10, right: 30, left: 0, bottom: 70 }}
-                            >
+                            <ResponsiveContainer width="100%" height="100%">
+                              <ComposedChart
+                                data={chartData}
+                                margin={{ top: 10, right: 30, left: 0, bottom: 70 }}
+                              >
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis 
                                 dataKey="name" 
@@ -1177,10 +1178,54 @@ export default function Home() {
                               )}
                               <Legend />
                             </ComposedChart>
+                            </ResponsiveContainer>
                           </ChartContainer>
                         </div>
                       </div>
                       
+                      <div className="flex justify-center mt-4">
+                        <Button 
+                          onClick={() => {
+                            if (chartRef.current) {
+                              // Create a canvas element
+                              const canvas = document.createElement('canvas');
+                              const chartElement = chartRef.current;
+                              
+                              // Set canvas dimensions to match the chart
+                              canvas.width = chartElement.offsetWidth;
+                              canvas.height = chartElement.offsetHeight;
+                              
+                              // Use html2canvas to capture the chart as an image
+                              import('html2canvas').then(html2canvas => {
+                                html2canvas.default(chartElement, {
+                                  backgroundColor: null,
+                                  scale: 2, // Higher scale for better quality
+                                }).then(canvas => {
+                                  // Convert canvas to PNG data URL
+                                  const dataUrl = canvas.toDataURL('image/png');
+                                  
+                                  // Create a download link
+                                  const link = document.createElement('a');
+                                  link.download = `budget-chart-${new Date().toISOString().split('T')[0]}.png`;
+                                  link.href = dataUrl;
+                                  link.click();
+                                  
+                                  toast.success('Chart image saved as PNG');
+                                }).catch(error => {
+                                  console.error('Error generating PNG:', error);
+                                  toast.error('Failed to save chart as PNG');
+                                });
+                              }).catch(error => {
+                                console.error('Error loading html2canvas:', error);
+                                toast.error('Failed to load image generation library');
+                              });
+                            }
+                          }}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          Save Chart as PNG
+                        </Button>
+                      </div>
 
                     </>
                   ) : (
