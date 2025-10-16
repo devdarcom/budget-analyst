@@ -19,43 +19,60 @@ export interface AppState {
 
 const STORAGE_KEY = 'budget-app-saved-states';
 
-// Get all saved states from local storage and database
+const getAuthHeader = async () => {
+  if (typeof window === 'undefined') return null;
+
+  const { supabase } = await import('@/lib/supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    return `Bearer ${session.access_token}`;
+  }
+
+  return null;
+};
+
 export const getSavedStates = async (userId?: string): Promise<SavedState[]> => {
   if (typeof window === 'undefined') return [];
-  
+
   try {
-    // Get states from local storage
     const savedStatesJson = localStorage.getItem(STORAGE_KEY);
     let localStates: SavedState[] = [];
-    
+
     if (savedStatesJson) {
       localStates = JSON.parse(savedStatesJson);
     }
-    
-    // If userId is provided, also fetch states from the database
+
     if (userId) {
       try {
-        const response = await fetch(`/api/states/get?userId=${userId}`);
-        
+        const authHeader = await getAuthHeader();
+        if (!authHeader) {
+          return localStates;
+        }
+
+        const response = await fetch('/api/states/get', {
+          headers: {
+            'Authorization': authHeader,
+          },
+        });
+
         if (response.ok) {
           const dbStates = await response.json();
-          
-          // Convert database states to the expected format
+
           const formattedDbStates = dbStates.map((state: any) => ({
             id: state.id,
             name: state.name,
             date: state.date,
             ...state.data
           }));
-          
-          // Combine local and database states
+
           return [...localStates, ...formattedDbStates];
         }
       } catch (dbError) {
         console.error('Error fetching states from database:', dbError);
       }
     }
-    
+
     return localStates;
   } catch (error) {
     console.error('Error loading saved states:', error);
@@ -82,33 +99,35 @@ export const saveState = async (name: string, state: AppState, userId?: string):
     const updatedStates = [...savedStates, newState];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStates));
     
-    // If userId is provided, also save to database
     if (userId) {
       try {
-        const response = await fetch('/api/states/save', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            name,
-            data: {
-              budgetParams: state.budgetParams,
-              iterations: state.iterations,
-              chartData: state.chartData,
-              visibleChartItems: state.visibleChartItems
+        const authHeader = await getAuthHeader();
+        if (authHeader) {
+          const response = await fetch('/api/states/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authHeader,
+            },
+            body: JSON.stringify({
+              name,
+              data: {
+                budgetParams: state.budgetParams,
+                iterations: state.iterations,
+                chartData: state.chartData,
+                visibleChartItems: state.visibleChartItems
+              }
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.id) {
+              newState.id = result.id;
             }
-          }),
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.id) {
-            newState.id = result.id; // Update with the database ID
+          } else {
+            console.error('Failed to save state to database:', await response.text());
           }
-        } else {
-          console.error('Failed to save state to database:', await response.text());
         }
       } catch (dbError) {
         console.error('Error saving state to database:', dbError);
@@ -147,25 +166,24 @@ export const deleteState = async (id: string, userId?: string): Promise<boolean>
     // Update local storage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredStates));
     
-    // If userId is provided, also delete from database
     if (userId) {
-      console.log(`Attempting to delete state ${id} for user ${userId} from database`);
       try {
-        const response = await fetch(`/api/states/delete?id=${id}&userId=${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Failed to delete state from database:', errorText);
-          return false;
+        const authHeader = await getAuthHeader();
+        if (authHeader) {
+          const response = await fetch(`/api/states/delete?id=${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authHeader,
+            },
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Failed to delete state from database:', errorText);
+            return false;
+          }
         }
-        
-        const result = await response.json();
-        console.log('Delete state API response:', result);
       } catch (dbError) {
         console.error('Error deleting state from database:', dbError);
         return false;

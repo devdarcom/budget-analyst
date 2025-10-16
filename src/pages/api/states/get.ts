@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -7,17 +7,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { userId } = req.query;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    if (!userId || typeof userId !== 'string') {
-      console.log('Missing or invalid userId:', userId);
-      return res.status(400).json({ error: 'Missing or invalid userId' });
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const { data: savedStates, error } = await supabase
       .from('saved_states')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('date', { ascending: false });
 
     if (error) {
@@ -25,7 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to get saved states' });
     }
 
-    console.log(`Retrieved ${savedStates?.length || 0} saved states for user ${userId}`);
     return res.status(200).json(savedStates || []);
   } catch (error) {
     console.error('Error getting saved states:', error);

@@ -1,21 +1,28 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 type User = {
   id: string;
+  email?: string;
 };
 
 type AuthContextType = {
   user: User | null;
-  login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isLoading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  login: async () => false,
-  logout: () => {},
+  login: async () => ({ success: false }),
+  signup: async () => ({ success: false }),
+  logout: async () => {},
   isAuthenticated: false,
+  isLoading: true,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -25,48 +32,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is already logged in from localStorage
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const storedUser = localStorage.getItem('budget-app-user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+        });
         setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('budget-app-user');
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      (async () => {
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email,
+          });
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      })();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    // Hardcoded credentials as requested
-    if (username === 'IziDrop' && password === 'HX6;D]xtyC`YFR"48nr/hv') {
-      const user = { id: 'IziDrop' };
-      setUser(user);
-      setIsAuthenticated(true);
-      localStorage.setItem('budget-app-user', JSON.stringify(user));
-      return true;
+  const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+        });
+        setIsAuthenticated(true);
+        return { success: true };
+      }
+
+      return { success: false, error: 'Signup failed' };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
     }
-    return false;
   };
 
-  const logout = () => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+        });
+        setIsAuthenticated(true);
+        return { success: true };
+      }
+
+      return { success: false, error: 'Login failed' };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('budget-app-user');
   };
 
-  if (isLoading) {
-    return null;
-  }
-
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
-      {children}
+    <AuthContext.Provider value={{ user, login, signup, logout, isAuthenticated, isLoading }}>
+      {!isLoading && children}
     </AuthContext.Provider>
   );
 };

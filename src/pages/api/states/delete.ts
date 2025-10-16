@@ -1,17 +1,39 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log('Path: /api/states/delete Request received:', { method: req.method, query: req.query });
   if (req.method !== 'DELETE') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { id, userId } = req.query;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    if (!id || typeof id !== 'string' || !userId || typeof userId !== 'string') {
-      console.log('Missing required fields:', { id, userId });
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { id } = req.query;
+
+    if (!id || typeof id !== 'string') {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -19,14 +41,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('saved_states')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (error) {
       console.error('Error deleting state:', error);
       return res.status(500).json({ error: 'Failed to delete state' });
     }
 
-    console.log(`Deleted state ${id} for user ${userId}`);
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Error deleting state:', error);
