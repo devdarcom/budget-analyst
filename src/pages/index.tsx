@@ -693,8 +693,12 @@ export default function Home() {
                     Iterations are pre-filled based on initial parameters up to 100% budget consumption.
                     You can add, regenerate, or import custom iterations. The table below is editable - click on any Days or Team Size value to modify it.
                     <p className="mt-2 font-medium">
-                      <span className="text-primary">Total Hours</span> can be calculated automatically from Days and Team Size (8 hours per day), 
+                      <span className="text-primary">Total Hours</span> can be calculated automatically from Days and Team Size (8 hours per day),
                       but can also be manually overridden for more precise control.
+                    </p>
+                    <p className="mt-2 font-medium">
+                      <span className="text-primary">Model Button:</span> Calculates the average total hours from all iterations up to the current one,
+                      then generates additional iterations with that average to reach the budget cap.
                     </p>
                   </CardDescription>
                 </CardHeader>
@@ -801,6 +805,13 @@ export default function Home() {
                         }}
                       >
                         Add Iterations to Reach Budget
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={modelIterationsFromAverage}
+                        disabled={iterations.length === 0}
+                      >
+                        Model
                       </Button>
                     </div>
                     <Button onClick={addIteration}>
