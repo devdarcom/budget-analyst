@@ -445,10 +445,18 @@ export default function Home() {
   }, [iterations.length, iterationsPreFilled]);
   
   // Automatically adjust iterations when budget parameters change
-  const budgetParamsRef = useRef(budgetParams);
+  const prevBudgetParamsRef = useRef(budgetParams);
   useEffect(() => {
-    if (iterations.length > 0 && budgetParamsRef.current !== budgetParams) {
-      budgetParamsRef.current = budgetParams;
+    const prev = prevBudgetParamsRef.current;
+    const hasChanged =
+      prev.costPerHour !== budgetParams.costPerHour ||
+      prev.budgetSize !== budgetParams.budgetSize ||
+      prev.teamSize !== budgetParams.teamSize ||
+      prev.workingDaysPerIteration !== budgetParams.workingDaysPerIteration ||
+      prev.currency !== budgetParams.currency;
+
+    if (iterations.length > 0 && hasChanged) {
+      prevBudgetParamsRef.current = budgetParams;
 
       const timeoutId = setTimeout(() => {
         const updatedIterations = ensureActualCumulativeCrossesTotalBudget();
@@ -478,11 +486,11 @@ export default function Home() {
             toast.info(`Adjusted iterations to match new budget parameters`);
           }
         }
-      }, 300);
+      }, 500);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [budgetParams, iterations]);
+  }, [budgetParams.costPerHour, budgetParams.budgetSize, budgetParams.teamSize, budgetParams.workingDaysPerIteration, budgetParams.currency, iterations.length]);
 
   // Calculate budget consumption percentage and consumed budget based on current iteration
   const calculateBudgetMetrics = () => {
