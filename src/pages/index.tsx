@@ -131,19 +131,109 @@ export default function Home() {
     }
 
     setIterations(prev => [...prev, iterationToAdd]);
-    
+
     // Set next iteration number and recalculate total hours for the new iteration
     setNewIteration(prev => {
       const nextIteration = {
         ...prev,
         iterationNumber: prev.iterationNumber + 1
       };
-      
+
       // Recalculate total hours for the new iteration
       nextIteration.totalHours = nextIteration.iterationDays * nextIteration.teamSize * 8;
-      
+
       return nextIteration;
     });
+  };
+
+  // Model iterations based on average hours up to current iteration
+  const modelIterationsFromAverage = () => {
+    if (iterations.length === 0) {
+      toast.error("No iterations available to calculate average");
+      return;
+    }
+
+    const { costPerHour, budgetSize, teamSize, workingDaysPerIteration } = budgetParams;
+
+    // Sort iterations by iteration number
+    const sortedIterations = [...iterations].sort((a, b) => a.iterationNumber - b.iterationNumber);
+
+    // Find the current iteration
+    const currentIteration = sortedIterations.find(it => it.isCurrent);
+    const currentIterationIndex = currentIteration
+      ? sortedIterations.findIndex(it => it.iterationNumber === currentIteration.iterationNumber)
+      : sortedIterations.length - 1;
+
+    // Calculate average total hours up to current iteration
+    const iterationsUpToCurrent = sortedIterations.slice(0, currentIterationIndex + 1);
+    const totalHoursSum = iterationsUpToCurrent.reduce((sum, it) => {
+      const hours = it.totalHours || (it.iterationDays * it.teamSize * 8);
+      return sum + hours;
+    }, 0);
+    const averageTotalHours = Math.round(totalHoursSum / iterationsUpToCurrent.length);
+
+    // Calculate cumulative cost up to current iteration
+    let cumulativeCost = 0;
+    for (let i = 0; i <= currentIterationIndex; i++) {
+      const iteration = sortedIterations[i];
+      const totalHours = iteration.totalHours || (iteration.iterationDays * iteration.teamSize * 8);
+      cumulativeCost += costPerHour * totalHours;
+    }
+
+    // Calculate how much budget is remaining
+    const remainingBudget = budgetSize - cumulativeCost;
+
+    if (remainingBudget <= 0) {
+      toast.info("Budget has already been reached or exceeded");
+      return;
+    }
+
+    // Calculate cost per iteration with average hours
+    const averageIterationCost = costPerHour * averageTotalHours;
+
+    if (averageIterationCost <= 0) {
+      toast.error("Invalid average iteration cost");
+      return;
+    }
+
+    // Calculate how many iterations needed to reach budget
+    const iterationsNeeded = Math.ceil(remainingBudget / averageIterationCost);
+
+    // Limit to 100 total iterations
+    const maxNewIterations = 100 - sortedIterations.length;
+    const iterationsToAdd = Math.min(iterationsNeeded, maxNewIterations);
+
+    if (iterationsToAdd <= 0) {
+      toast.info("Maximum iterations reached");
+      return;
+    }
+
+    // Calculate days and team size based on average hours
+    const estimatedDays = Math.round(averageTotalHours / (teamSize * 8)) || workingDaysPerIteration;
+
+    // Create new iterations
+    const newIterations = [...sortedIterations];
+    const maxIterationNumber = Math.max(...sortedIterations.map(it => it.iterationNumber));
+
+    for (let i = 1; i <= iterationsToAdd; i++) {
+      newIterations.push({
+        iterationNumber: maxIterationNumber + i,
+        iterationDays: estimatedDays,
+        teamSize: teamSize,
+        totalHours: averageTotalHours,
+        isCurrent: false
+      });
+    }
+
+    setIterations(newIterations);
+
+    // Update the next iteration number for manual additions
+    setNewIteration(prev => ({
+      ...prev,
+      iterationNumber: maxIterationNumber + iterationsToAdd + 1
+    }));
+
+    toast.success(`Added ${iterationsToAdd} iterations with average of ${averageTotalHours} hours each`);
   };
 
   // Handle CSV file import
