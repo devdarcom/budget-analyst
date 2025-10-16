@@ -228,24 +228,23 @@ export default function Home() {
   };
 
   // Calculate chart data whenever parameters or iterations change
-  useEffect(() => {
+  const calculateChartData = React.useCallback(() => {
     const { costPerHour, teamSize, workingDaysPerIteration } = budgetParams;
     const standardHoursPerIteration = 8 * teamSize * workingDaysPerIteration;
     const standardIterationCost = costPerHour * standardHoursPerIteration;
-    
+
     // Sort iterations by iteration number
     const sortedIterations = [...iterations].sort((a, b) => a.iterationNumber - b.iterationNumber);
-    
+
     // Find the current iteration (if any)
     const currentIteration = sortedIterations.find(it => it.isCurrent);
-    const currentIterationIndex = currentIteration 
+    const currentIterationIndex = currentIteration
       ? sortedIterations.findIndex(it => it.iterationNumber === currentIteration.iterationNumber)
-      : sortedIterations.length - 1; // If no current iteration, use the last one
-    
+      : sortedIterations.length - 1;
+
     let cumulativeStandard = 0;
     let cumulativeActual = 0;
-    
-    // Start with an initial data point at 0
+
     const data: ChartData[] = [
       {
         name: "Start",
@@ -254,39 +253,33 @@ export default function Home() {
         cumulativeActual: 0
       }
     ];
-    
-    // Add data points for each iteration
+
     sortedIterations.forEach((iteration, index) => {
-      // Get total hours (use calculated value if not set)
       const totalHours = iteration.totalHours || (iteration.iterationDays * iteration.teamSize * 8);
-      
-      // Calculate the cost for this iteration using total hours
       const iterationCost = costPerHour * totalHours;
-      
-      // Always calculate standard cumulative
+
       cumulativeStandard += standardIterationCost;
-      
-      // For actual cumulative, use actual data up to current iteration
-      // After current iteration, follow standard data pattern
+
       if (index <= currentIterationIndex) {
-        // Up to current iteration, use actual data
         cumulativeActual += iterationCost;
       } else {
-        // After current iteration, follow standard data pattern
         cumulativeActual += standardIterationCost;
       }
-      
+
       data.push({
         name: `Iteration ${iteration.iterationNumber}`,
-        // Only show iteration cost up to current iteration
         iterationCost: index <= currentIterationIndex ? iterationCost : 0,
         cumulativeStandard,
         cumulativeActual
       });
     });
-    
-    setChartData(data);
+
+    return data;
   }, [budgetParams, iterations]);
+
+  useEffect(() => {
+    setChartData(calculateChartData());
+  }, [calculateChartData]);
 
   // Generate CSV template for download
   const generateParametersTemplate = () => {
@@ -438,37 +431,32 @@ export default function Home() {
   
   // Pre-fill iterations when budget parameters change
   useEffect(() => {
-    // Only pre-fill if no iterations exist yet and we haven't pre-filled before
     if (iterations.length === 0 && !iterationsPreFilled) {
       const generatedIterations = generateIterationsToFullBudget();
       if (generatedIterations.length > 0) {
         setIterations(generatedIterations);
         setIterationsPreFilled(true);
-        
-        // Update the next iteration number for manual additions
         setNewIteration(prev => ({
           ...prev,
           iterationNumber: generatedIterations.length + 1
         }));
       }
     }
-  }, [budgetParams, iterations.length, iterationsPreFilled]);
+  }, [iterations.length, iterationsPreFilled]);
   
   // Automatically adjust iterations when budget parameters change
+  const budgetParamsRef = useRef(budgetParams);
   useEffect(() => {
-    // Only adjust if we already have iterations
-    if (iterations.length > 0) {
-      // Use a timeout to ensure this runs after the state has been updated
+    if (iterations.length > 0 && budgetParamsRef.current !== budgetParams) {
+      budgetParamsRef.current = budgetParams;
+
       const timeoutId = setTimeout(() => {
         const updatedIterations = ensureActualCumulativeCrossesTotalBudget();
-        
-        // Check if we need to add or regenerate iterations
+
         if (updatedIterations.length !== iterations.length) {
-          // Preserve the current iteration state
           const currentIteration = iterations.find(it => it.isCurrent);
-          
+
           if (currentIteration) {
-            // Find and mark the same iteration as current in the updated list
             const updatedWithCurrentPreserved = updatedIterations.map(it => ({
               ...it,
               isCurrent: it.iterationNumber === currentIteration.iterationNumber
@@ -477,25 +465,24 @@ export default function Home() {
           } else {
             setIterations(updatedIterations);
           }
-          
-          // Update the next iteration number for manual additions
+
           const maxIterationNumber = Math.max(...updatedIterations.map(it => it.iterationNumber));
           setNewIteration(prev => ({
             ...prev,
             iterationNumber: maxIterationNumber + 1
           }));
-          
+
           if (updatedIterations.length > iterations.length) {
             toast.success(`Added ${updatedIterations.length - iterations.length} iterations to reach total budget`);
           } else if (updatedIterations.length < iterations.length) {
             toast.info(`Adjusted iterations to match new budget parameters`);
           }
         }
-      }, 0);
-      
+      }, 300);
+
       return () => clearTimeout(timeoutId);
     }
-  }, [budgetParams]);
+  }, [budgetParams, iterations]);
 
   // Calculate budget consumption percentage and consumed budget based on current iteration
   const calculateBudgetMetrics = () => {

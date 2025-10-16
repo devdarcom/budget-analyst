@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import prisma from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -14,18 +14,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing or invalid userId' });
     }
 
-    // Get saved states from database
-    const savedStates = await prisma.savedState.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+    const { data: savedStates, error } = await supabase
+      .from('saved_states')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
 
-    console.log(`Retrieved ${savedStates.length} saved states for user ${userId}`);
-    return res.status(200).json(savedStates);
+    if (error) {
+      console.error('Error getting saved states:', error);
+      return res.status(500).json({ error: 'Failed to get saved states' });
+    }
+
+    console.log(`Retrieved ${savedStates?.length || 0} saved states for user ${userId}`);
+    return res.status(200).json(savedStates || []);
   } catch (error) {
     console.error('Error getting saved states:', error);
     return res.status(500).json({ error: 'Failed to get saved states' });

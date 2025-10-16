@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import prisma from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -14,14 +14,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Save state to database
-    const savedState = await prisma.savedState.create({
-      data: {
-        userId,
+    const { data: savedState, error } = await supabase
+      .from('saved_states')
+      .insert({
+        user_id: userId,
         name,
         data,
-      },
-    });
+        date: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving state:', error);
+      return res.status(500).json({ error: 'Failed to save state' });
+    }
 
     console.log('State saved successfully:', savedState.id);
     return res.status(200).json({ success: true, id: savedState.id });
